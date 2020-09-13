@@ -14,6 +14,8 @@ These commands will allow you to try the daemons without installing anything glo
 
 `cargo build`
 
+You can also build individual daemons with `cargo build --bin simple-osd-$DAEMON` .
+
 ## Usage
 
 Run the daemons you need. At this moment, none of them accept any arguments.
