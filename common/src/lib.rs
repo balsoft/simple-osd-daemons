@@ -1,3 +1,6 @@
+// This is free and unencumbered software released into the public domain.
+// balsoft 2020
+
 extern crate libnotify;
 extern crate xdg;
 extern crate configparser;

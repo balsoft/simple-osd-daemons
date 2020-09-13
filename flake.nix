@@ -1,3 +1,6 @@
+# This is free and unencumbered software released into the public domain.
+# balsoft 2020
+
 {
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";

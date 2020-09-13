@@ -1,3 +1,6 @@
+// This is free and unencumbered software released into the public domain.
+// balsoft 2020
+
 extern crate libpulse_binding as pulse;
 
 extern crate simple_osd_common as osd;
