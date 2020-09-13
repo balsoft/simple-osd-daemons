@@ -1,0 +1,9 @@
+[workspace]
+members = [
+  "common",
+
+  "battery",
+  "bluetooth",
+  "brightness",
+  "pulseaudio"
+]
