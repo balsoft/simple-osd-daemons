@@ -24,6 +24,12 @@ Run the daemons you need. At this moment, none of them accept any arguments.
 
 `simple-osd-daemons` follows XDG Basedir specification: configuration will be written to `$XDG_CONFIG_HOME/simple-osd/`, typically `~/.config/simple-osd/`. Each daemon has a separate configuration file in INI format, and there is also a `common` configuration file. On startup, the daemons will create their configuration files and populate them with default values if they don't exist.
 
+## FIXME
+
+1. Generate `Cargo.nix` on the fly
+2. Bluetooth daemon doesn't actually work, since blurz doesn't allow to get the list of connected devices
+3. Need to figure out icons
+
 ## License
 
 This is free and unencumbered software released into the public domain.
