@@ -33,6 +33,8 @@ fn main() {
             osd.update();
         }
 
+        last_b = b;
+
         std::thread::sleep(std::time::Duration::from_secs(refresh_interval))
     }
 }
