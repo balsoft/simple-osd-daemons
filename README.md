@@ -2,6 +2,12 @@
 
 A collection of simple yet configurable OSD daemons that use Freedesktop notifications to display various information about your system.
 
+## Example screenshot
+
+![](./assets/pulseaudio.png)
+
+Taken with [mako](https://github.com/emersion/mako) as a notification daemon and IBM Plex font.
+
 ## Installation
 
 ### Nix
