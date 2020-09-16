@@ -33,10 +33,10 @@ pub mod config {
 
             if let Some(config_path_buf) = config_path_option.clone() {
                 if metadata(config_path_buf.clone()).map(|m| m.is_file()).unwrap_or(false) {
-                    config.load(config_path_buf.to_str().unwrap());
+                    let _ = config.load(config_path_buf.to_str().unwrap());
                 } else {
-                    File::create(config_path_buf);
-                }
+                    let _ = File::create(config_path_buf);
+                };
             }
 
             let config_path = config_path_option.map(|p| p.to_str().unwrap().to_string());
