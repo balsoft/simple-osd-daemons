@@ -8,10 +8,8 @@ use std::io;
 use std::thread;
 use std::time::Duration;
 
-use osd::notify::{OSD, OSDContents, OSDProgressText, Urgency};
+use osd::notify::{OSD, Urgency};
 use osd::config::Config;
-
-use battery::units::Time;
 
 #[derive(Debug)]
 enum Threshold {
@@ -42,8 +40,8 @@ fn parse_threshold(thresh: String) -> Option<Threshold> {
 fn main() -> battery::Result<()> {
     let mut config = Config::new("battery");
 
-    let mut low_threshold_str = config.get_default("threshold", "low", String::from("30m"));
-    let mut critical_threshold_str = config.get_default("threshold", "critical", String::from("10m"));
+    let low_threshold_str = config.get_default("threshold", "low", String::from("30m"));
+    let critical_threshold_str = config.get_default("threshold", "critical", String::from("10m"));
 
     let low_threshold = parse_threshold(low_threshold_str).expect("Low threshold is incorrect: must be either a percentage or minutes");
     let critical_threshold = parse_threshold(critical_threshold_str).expect("Critical threshold is incorrect: must be either a percentage or minutes");
