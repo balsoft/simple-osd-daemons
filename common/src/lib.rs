@@ -120,6 +120,8 @@ pub mod notify {
 
         pub urgency: Urgency,
 
+        pub timeout: i32,
+
         // Progress bar stuff
         length: i32,
 
@@ -139,6 +141,8 @@ pub mod notify {
 
             let mut config = Config::new("common");
 
+            let timeout = config.get("notification", "default timeout").unwrap_or(-1); // -1 means the default timeout of the notification server
+
             let length = config.get_default("progressbar", "length", 20);
 
             let full = config.get_default("progressbar", "full", String::from("█"));
@@ -153,6 +157,7 @@ pub mod notify {
                 title: None, icon: None,
                 contents: OSDContents::default(),
                 urgency: Urgency::Normal,
+                timeout,
                 length, full, empty, start, end,
                 notification
             };
