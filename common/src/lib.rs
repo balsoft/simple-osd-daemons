@@ -12,6 +12,11 @@ pub mod config {
     use xdg::BaseDirectories;
     use std::fs::{File, metadata};
 
+    use std::str::FromStr;
+    use std::fmt::Debug;
+    use std::fmt::Display;
+    use std::default::Default;
+
     pub struct Config {
         config_path: Option<String>,
         config: Ini
@@ -39,10 +44,10 @@ pub mod config {
             Config { config, config_path }
         }
 
-        pub fn get<T: std::str::FromStr>(&mut self, section: &str, key: &str) -> Option<T>
+        pub fn get<T>(&mut self, section: &str, key: &str) -> Option<T>
           where
-            T: std::str::FromStr,
-            <T as std::str::FromStr>::Err: std::fmt::Debug
+            T: FromStr,
+            <T as FromStr>::Err: Debug
         {
             self.config.get(section, key).map(|s: String| { s.parse().unwrap() }).or_else(|| {
                 self.config.set(section, key, None);
@@ -53,9 +58,9 @@ pub mod config {
 
         pub fn get_default<T>(&mut self, section: &str, key: &str, default: T) -> T
           where
-            T: std::str::FromStr,
-            T: std::fmt::Display,
-            <T as std::str::FromStr>::Err: std::fmt::Debug
+            T: FromStr,
+            T: Display,
+            <T as FromStr>::Err: Debug
         {
             let val: Option<T> = self.get(section, key);
 
@@ -65,12 +70,23 @@ pub mod config {
                 default
             })
         }
+
+        pub fn get_default_from_trait<T>(&mut self, section: &str, key: &str) -> T
+        where
+            T: FromStr,
+            T: Display,
+            T: Default,
+            <T as FromStr>::Err: Debug
+        {
+            self.get_default(section, key, T::default())
+        }
     }
 }
 pub mod notify {
     use libnotify::Notification;
     pub use libnotify::Urgency;
     use crate::config::Config;
+    use std::default::Default;
 
     fn init_if_not_already() {
         if ! libnotify::is_initted() {
@@ -87,6 +103,12 @@ pub mod notify {
     pub enum OSDContents {
         Simple(Option<String>),
         Progress(f32, OSDProgressText)
+    }
+
+    impl Default for OSDContents {
+        fn default() -> OSDContents {
+            OSDContents::Simple(None)
+        }
     }
 
     pub struct OSD {
@@ -129,7 +151,7 @@ pub mod notify {
 
             return OSD {
                 title: None, icon: None,
-                contents: OSDContents::Simple(None),
+                contents: OSDContents::default(),
                 urgency: Urgency::Normal,
                 length, full, empty, start, end,
                 notification
