@@ -5,6 +5,9 @@ extern crate libpulse_binding as pulse;
 
 extern crate simple_osd_common as osd;
 
+use std::rc::Rc;
+use std::cell::RefCell;
+
 use pulse::mainloop::standard::Mainloop;
 use pulse::context::Context;
 use osd::config::Config;
@@ -54,34 +57,27 @@ fn main() {
     let introspector = context.introspect();
 
 
-    // Explanation for the unsafe:
-    // Both subscribe_callback and sink_info_handler shall not outlive mainloop, but the borrow checker can't know that.
-    // Thus, it moves osd into the subscribe_callback and then tries to move it into the sink_info_handler, but that's impossible.
-    // In reality, both closures will be destroyed when mainloop quits, and osd's lifetime is the same as mainloop's.
-    unsafe {
-        let osd: *mut OSD = &mut OSD::new();
-        (*osd).icon = Some(String::from("multimedia-volume-control"));
+    let osd = Rc::new(RefCell::new(OSD::new()));
+    osd.borrow_mut().icon = Some(String::from("multimedia-volume-control"));
 
-        let sink_info_handler = move |results: ListResult<&SinkInfo>| {
-            if let ListResult::Item(i) = results {
-                let volume = i.volume.avg();
-                let sink_name = i.description.as_deref().unwrap_or("Unnamed sink");
-                let muted_message = if i.mute { " [MUTED]" } else { "" };
-                (*osd).title = Some(format!("Volume on {}{}", sink_name, muted_message));
-                (*osd).contents = OSDContents::Progress(volume.0 as f32 / 65536., OSDProgressText::Percentage);
-                (*osd).update();
-            }
-        };
+    let sink_info_handler = move |results: ListResult<&SinkInfo>| {
+        if let ListResult::Item(i) = results {
+            let volume = i.volume.avg();
+            let sink_name = i.description.as_deref().unwrap_or("Unnamed sink");
+            let muted_message = if i.mute { " [MUTED]" } else { "" };
+            osd.borrow_mut().title = Some(format!("Volume on {}{}", sink_name, muted_message));
+            osd.borrow_mut().contents = OSDContents::Progress(volume.0 as f32 / 65536., OSDProgressText::Percentage);
+            osd.borrow_mut().update();
+        }
+    };
 
-        let subscribe_callback = move |facility, operation, index| {
-            if facility == Some(Facility::Sink) && operation == Some(Operation::Changed) {
-                introspector.get_sink_info_by_index(index, sink_info_handler);
-            }
-        };
+    let subscribe_callback = move |facility, operation, index| {
+        if facility == Some(Facility::Sink) && operation == Some(Operation::Changed) {
+            introspector.get_sink_info_by_index(index, sink_info_handler.clone());
+        }
+    };
 
-        context.set_subscribe_callback(Some(Box::new(subscribe_callback)));
+    context.set_subscribe_callback(Some(Box::new(subscribe_callback)));
 
-        // We need to run mainloop here for reasons I don't understand. It crashes otherwise.
-        mainloop.run().unwrap();
-    }
+    mainloop.run().unwrap();
 }
