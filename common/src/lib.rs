@@ -200,10 +200,21 @@ pub mod notify {
             }
         }
 
-        pub fn update(&mut self) {
+        fn try_update(&mut self) -> Result<(), String> {
             self.notification.update(self.title.as_deref().unwrap_or(""), self.get_full_text().as_deref(), self.icon.as_deref()).unwrap();
             self.notification.set_urgency(self.urgency);
-            self.notification.show().unwrap();
+            self.notification.show().or(Err("Failed to show the notification".to_string()))
+        }
+
+        pub fn update(&mut self) {
+            // The notification server may restart, and in that case the notification becomes invalid;
+            // We need to handle that situation.
+            self.try_update().unwrap_or_else(|_| {
+                libnotify::uninit();
+                init_if_not_already();
+                self.notification = Notification::new("", None, None);
+                self.try_update().unwrap();
+            });
         }
     }
 }
