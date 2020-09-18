@@ -68,6 +68,16 @@ rec {
       # File a bug if you depend on any for non-debug work!
       debug = internal.debugCrate { inherit packageId; };
     };
+    "simple-osd-mpris" = rec {
+      packageId = "simple-osd-mpris";
+      build = internal.buildRustCrateWithFeatures {
+        packageId = "simple-osd-mpris";
+      };
+
+      # Debug support which might change between releases.
+      # File a bug if you depend on any for non-debug work!
+      debug = internal.debugCrate { inherit packageId; };
+    };
     "simple-osd-pulseaudio" = rec {
       packageId = "simple-osd-pulseaudio";
       build = internal.buildRustCrateWithFeatures {
@@ -100,6 +110,45 @@ rec {
     #   inject test dependencies into the build
 
     crates = {
+      "addr2line" = rec {
+        crateName = "addr2line";
+        version = "0.13.0";
+        edition = "2015";
+        sha256 = "0wih40hagpvpsqrvz7jb1cyv00hlsr9hhrwpjz5b76k6f4rjsshv";
+        authors = [
+          "Nick Fitzgerald <fitzgen@gmail.com>"
+          "Philip Craig <philipjcraig@gmail.com>"
+          "Jon Gjengset <jon@thesquareplanet.com>"
+          "Noah Bergbauer <noah.bergbauer@tum.de>"
+        ];
+        dependencies = [
+          {
+            name = "gimli";
+            packageId = "gimli";
+            usesDefaultFeatures = false;
+            features = [ "read" ];
+          }
+        ];
+        features = {
+          "default" = [ "rustc-demangle" "cpp_demangle" "std-object" "fallible-iterator" "smallvec" ];
+          "rustc-dep-of-std" = [ "core" "alloc" "compiler_builtins" "gimli/rustc-dep-of-std" ];
+          "std" = [ "gimli/std" ];
+          "std-object" = [ "std" "object" "object/std" "object/compression" "gimli/endian-reader" ];
+        };
+      };
+      "adler" = rec {
+        crateName = "adler";
+        version = "0.2.3";
+        edition = "2015";
+        sha256 = "0zpdsrfq5bd34941gmrlamnzjfbsx0x586afb7b0jqhr8g1lwapf";
+        authors = [
+          "Jonas Schievink <jonasschievink@gmail.com>"
+        ];
+        features = {
+          "default" = [ "std" ];
+          "rustc-dep-of-std" = [ "core" "compiler_builtins" ];
+        };
+      };
       "autocfg" = rec {
         crateName = "autocfg";
         version = "1.0.1";
@@ -119,6 +168,59 @@ rec {
           "Jerko Steiner <jerko.steiner@gmail.com>"
         ];
         
+      };
+      "backtrace" = rec {
+        crateName = "backtrace";
+        version = "0.3.50";
+        edition = "2018";
+        sha256 = "14zj0dfzqyhsqnb7v65k6xjsaip0rcdqqi1lb7dvmwfdzpr4q9a6";
+        authors = [
+          "The Rust Project Developers"
+        ];
+        dependencies = [
+          {
+            name = "addr2line";
+            packageId = "addr2line";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "cfg-if";
+            packageId = "cfg-if";
+          }
+          {
+            name = "libc";
+            packageId = "libc";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "miniz_oxide";
+            packageId = "miniz_oxide";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "object";
+            packageId = "object";
+            optional = true;
+            usesDefaultFeatures = false;
+            features = [ "read_core" "elf" "macho" "pe" "unaligned" ];
+          }
+          {
+            name = "rustc-demangle";
+            packageId = "rustc-demangle";
+          }
+        ];
+        features = {
+          "default" = [ "std" "gimli-symbolize" ];
+          "gimli-symbolize" = [ "addr2line" "miniz_oxide" "object" "std" ];
+          "libbacktrace" = [ "backtrace-sys/backtrace-sys" ];
+          "rustc-dep-of-std" = [ "backtrace-sys/rustc-dep-of-std" "cfg-if/rustc-dep-of-std" "core" "compiler_builtins" "libc/rustc-dep-of-std" "rustc-demangle/rustc-dep-of-std" ];
+          "serialize-rustc" = [ "rustc-serialize" ];
+          "serialize-serde" = [ "serde" ];
+          "verify-winapi" = [ "winapi/dbghelp" "winapi/handleapi" "winapi/libloaderapi" "winapi/memoryapi" "winapi/minwindef" "winapi/processthreadsapi" "winapi/synchapi" "winapi/tlhelp32" "winapi/winbase" "winapi/winnt" ];
+        };
+        resolvedDefaultFeatures = [ "addr2line" "default" "gimli-symbolize" "miniz_oxide" "object" "std" ];
       };
       "battery" = rec {
         crateName = "battery";
@@ -200,7 +302,7 @@ rec {
         dependencies = [
           {
             name = "dbus";
-            packageId = "dbus";
+            packageId = "dbus 0.6.5";
           }
           {
             name = "hex";
@@ -267,7 +369,84 @@ rec {
         features = {
         };
       };
-      "dbus" = rec {
+      "darling" = rec {
+        crateName = "darling";
+        version = "0.5.0";
+        edition = "2015";
+        sha256 = "1xl9mc79zkva2iqkrw5a6sdb02l9whlya5b4xam5594bp5p6xypb";
+        authors = [
+          "Ted Driggs <ted.driggs@outlook.com>"
+        ];
+        dependencies = [
+          {
+            name = "darling_core";
+            packageId = "darling_core";
+          }
+          {
+            name = "darling_macro";
+            packageId = "darling_macro";
+          }
+        ];
+        
+      };
+      "darling_core" = rec {
+        crateName = "darling_core";
+        version = "0.5.0";
+        edition = "2015";
+        sha256 = "0s693xxyw4lilvxjwrlj102k63fyjwv2p74p3mpwshzq0imikby8";
+        authors = [
+          "Ted Driggs <ted.driggs@outlook.com>"
+        ];
+        dependencies = [
+          {
+            name = "ident_case";
+            packageId = "ident_case";
+          }
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 0.3.8";
+          }
+          {
+            name = "quote";
+            packageId = "quote 0.5.2";
+          }
+          {
+            name = "syn";
+            packageId = "syn 0.13.11";
+            features = [ "extra-traits" ];
+          }
+        ];
+        features = {
+          "default" = [ "syn/full" ];
+        };
+        resolvedDefaultFeatures = [ "default" ];
+      };
+      "darling_macro" = rec {
+        crateName = "darling_macro";
+        version = "0.5.0";
+        edition = "2015";
+        sha256 = "0470zgkv3y7cm6jpcqh9ndx20yc8jjf2lxajbv7kw6ji62218686";
+        procMacro = true;
+        authors = [
+          "Ted Driggs <ted.driggs@outlook.com>"
+        ];
+        dependencies = [
+          {
+            name = "darling_core";
+            packageId = "darling_core";
+          }
+          {
+            name = "quote";
+            packageId = "quote 0.5.2";
+          }
+          {
+            name = "syn";
+            packageId = "syn 0.13.11";
+          }
+        ];
+        
+      };
+      "dbus 0.6.5" = rec {
         crateName = "dbus";
         version = "0.6.5";
         edition = "2015";
@@ -287,6 +466,194 @@ rec {
         ];
         features = {
         };
+      };
+      "dbus 0.8.4" = rec {
+        crateName = "dbus";
+        version = "0.8.4";
+        edition = "2018";
+        sha256 = "0cngaaicqmg27vj7h1qhfgyr2l7x28sb0zc91y3a2ih1466fgnaw";
+        authors = [
+          "David Henningsson <diwic@ubuntu.com>"
+        ];
+        dependencies = [
+          {
+            name = "libc";
+            packageId = "libc";
+          }
+          {
+            name = "libdbus-sys";
+            packageId = "libdbus-sys";
+          }
+        ];
+        features = {
+        };
+      };
+      "derive_is_enum_variant" = rec {
+        crateName = "derive_is_enum_variant";
+        version = "0.1.1";
+        edition = "2015";
+        sha256 = "15w18649m4h47pdpr04id0wv8br8bg606zvrafcrfijihicqib6h";
+        procMacro = true;
+        authors = [
+          "Nick Fitzgerald <fitzgen@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "heck";
+            packageId = "heck";
+          }
+          {
+            name = "quote";
+            packageId = "quote 0.3.15";
+          }
+          {
+            name = "syn";
+            packageId = "syn 0.11.11";
+          }
+        ];
+        
+      };
+      "enum-kinds" = rec {
+        crateName = "enum-kinds";
+        version = "0.4.1";
+        edition = "2015";
+        sha256 = "1df4ra7knqpnd2g50bixs389lg6hbb50858v0wcqr17a9lvirwnh";
+        procMacro = true;
+        authors = [
+          "Samuel Laurén <samuel.lauren@iki.fi>"
+        ];
+        dependencies = [
+          {
+            name = "quote";
+            packageId = "quote 0.4.2";
+          }
+          {
+            name = "syn";
+            packageId = "syn 0.12.15";
+          }
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "default" ];
+      };
+      "error-chain" = rec {
+        crateName = "error-chain";
+        version = "0.11.0";
+        edition = "2015";
+        crateBin = [];
+        sha256 = "1wykkr0naizbkwxjwia1rch8xhwvgij9khqvjzs07mrmqifislgz";
+        authors = [
+          "Brian Anderson <banderson@mozilla.com>"
+          "Paul Colomiets <paul@colomiets.name>"
+          "Colin Kiegel <kiegel@gmx.de>"
+          "Yamakaky <yamakaky@yamaworld.fr>"
+        ];
+        features = {
+          "default" = [ "backtrace" "example_generated" ];
+        };
+      };
+      "failure" = rec {
+        crateName = "failure";
+        version = "0.1.8";
+        edition = "2015";
+        sha256 = "11jg1wmbkijrs6bk9fqnbrm9zf0850whnqpgnxyswbn0dk8rnbnk";
+        authors = [
+          "Without Boats <boats@mozilla.com>"
+        ];
+        dependencies = [
+          {
+            name = "backtrace";
+            packageId = "backtrace";
+            optional = true;
+          }
+          {
+            name = "failure_derive";
+            packageId = "failure_derive";
+            optional = true;
+          }
+        ];
+        features = {
+          "default" = [ "std" "derive" ];
+          "derive" = [ "failure_derive" ];
+          "std" = [ "backtrace" ];
+        };
+        resolvedDefaultFeatures = [ "backtrace" "default" "derive" "failure_derive" "std" ];
+      };
+      "failure_derive" = rec {
+        crateName = "failure_derive";
+        version = "0.1.8";
+        edition = "2015";
+        sha256 = "1936adqqk080439kx2bjf1bds7h89sg6wcif4jw0syndcv3s6kda";
+        procMacro = true;
+        authors = [
+          "Without Boats <woboats@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 1.0.21";
+          }
+          {
+            name = "quote";
+            packageId = "quote 1.0.7";
+          }
+          {
+            name = "syn";
+            packageId = "syn 1.0.41";
+          }
+          {
+            name = "synstructure";
+            packageId = "synstructure";
+          }
+        ];
+        features = {
+        };
+      };
+      "from_variants" = rec {
+        crateName = "from_variants";
+        version = "0.4.0";
+        edition = "2015";
+        sha256 = "0clyx2vdhfykmayffhr1qmr8pa3nvdmb9jr46bil03dxsyakfyrb";
+        authors = [
+          "Ted Driggs <ted.driggs@outlook.com>"
+        ];
+        dependencies = [
+          {
+            name = "from_variants_impl";
+            packageId = "from_variants_impl";
+          }
+        ];
+        
+      };
+      "from_variants_impl" = rec {
+        crateName = "from_variants_impl";
+        version = "0.4.0";
+        edition = "2015";
+        sha256 = "1h5rwnqyrank18xgdp05ralm1ihb4wd3h977zqv7axg98100hkfm";
+        procMacro = true;
+        authors = [
+          "Ted Driggs <ted.driggs@outlook.com>"
+        ];
+        dependencies = [
+          {
+            name = "darling";
+            packageId = "darling";
+          }
+          {
+            name = "error-chain";
+            packageId = "error-chain";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "quote";
+            packageId = "quote 0.5.2";
+          }
+          {
+            name = "syn";
+            packageId = "syn 0.13.11";
+          }
+        ];
+        
       };
       "gdk-pixbuf" = rec {
         crateName = "gdk-pixbuf";
@@ -371,6 +738,24 @@ rec {
           "v2_32" = [ "v2_30" ];
           "v2_36" = [ "v2_32" ];
         };
+      };
+      "gimli" = rec {
+        crateName = "gimli";
+        version = "0.22.0";
+        edition = "2018";
+        sha256 = "095pi71iv1mkpjsgh151gxg7g2576xpd8323z9kp7d3c2fpizyda";
+        authors = [
+          "Nick Fitzgerald <fitzgen@gmail.com>"
+          "Philip Craig <philipjcraig@gmail.com>"
+        ];
+        features = {
+          "default" = [ "read" "write" "std" "fallible-iterator" "endian-reader" ];
+          "endian-reader" = [ "stable_deref_trait" ];
+          "rustc-dep-of-std" = [ "core" "alloc" "compiler_builtins" ];
+          "std" = [ "fallible-iterator/std" "stable_deref_trait/std" ];
+          "write" = [ "indexmap" ];
+        };
+        resolvedDefaultFeatures = [ "read" ];
       };
       "gio-sys" = rec {
         crateName = "gio-sys";
@@ -536,6 +921,22 @@ rec {
           "v2_54" = [ "v2_46" ];
         };
       };
+      "heck" = rec {
+        crateName = "heck";
+        version = "0.3.1";
+        edition = "2015";
+        sha256 = "01a2v7yvkiqxakdqz4hw3w3g4sm52ivz9cs3qcsv2arxsmw4wmi0";
+        authors = [
+          "Without Boats <woboats@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "unicode-segmentation";
+            packageId = "unicode-segmentation";
+          }
+        ];
+        
+      };
       "hex" = rec {
         crateName = "hex";
         version = "0.3.2";
@@ -546,6 +947,16 @@ rec {
         ];
         features = {
         };
+      };
+      "ident_case" = rec {
+        crateName = "ident_case";
+        version = "1.0.1";
+        edition = "2015";
+        sha256 = "0fac21q6pwns8gh1hz3nbq15j8fi441ncl6w4vlnd1cmc55kiq5r";
+        authors = [
+          "Ted Driggs <ted.driggs@outlook.com>"
+        ];
+        
       };
       "lazy_static" = rec {
         crateName = "lazy_static";
@@ -780,6 +1191,68 @@ rec {
         };
         resolvedDefaultFeatures = [ "default" ];
       };
+      "miniz_oxide" = rec {
+        crateName = "miniz_oxide";
+        version = "0.4.2";
+        edition = "2018";
+        sha256 = "1fd7slw7pgy7gvm008y90a1zallcaf1zrn5s8jhl62y16bz0s366";
+        authors = [
+          "Frommi <daniil.liferenko@gmail.com>"
+          "oyvindln <oyvindln@users.noreply.github.com>"
+        ];
+        dependencies = [
+          {
+            name = "adler";
+            packageId = "adler";
+            usesDefaultFeatures = false;
+          }
+        ];
+        buildDependencies = [
+          {
+            name = "autocfg";
+            packageId = "autocfg";
+          }
+        ];
+        features = {
+          "rustc-dep-of-std" = [ "core" "alloc" "compiler_builtins" "adler/rustc-dep-of-std" ];
+        };
+      };
+      "mpris" = rec {
+        crateName = "mpris";
+        version = "2.0.0-rc2";
+        edition = "2015";
+        sha256 = "04g7qbrkwlb5l2srnan5fxd44kl9nn4dkc0pym353bv7nki6fphr";
+        authors = [
+          "Magnus Bergmark <magnus.bergmark@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "dbus";
+            packageId = "dbus 0.8.4";
+          }
+          {
+            name = "derive_is_enum_variant";
+            packageId = "derive_is_enum_variant";
+          }
+          {
+            name = "enum-kinds";
+            packageId = "enum-kinds";
+          }
+          {
+            name = "failure";
+            packageId = "failure";
+          }
+          {
+            name = "failure_derive";
+            packageId = "failure_derive";
+          }
+          {
+            name = "from_variants";
+            packageId = "from_variants";
+          }
+        ];
+        
+      };
       "num-traits" = rec {
         crateName = "num-traits";
         version = "0.2.12";
@@ -799,6 +1272,28 @@ rec {
         };
         resolvedDefaultFeatures = [ "std" ];
       };
+      "object" = rec {
+        crateName = "object";
+        version = "0.20.0";
+        edition = "2018";
+        sha256 = "199cx2px61alixkxxi3mfdxl6z3z7ljjap9802m81jh04kk2pd8s";
+        authors = [
+          "Nick Fitzgerald <fitzgen@gmail.com>"
+          "Philip Craig <philipjcraig@gmail.com>"
+        ];
+        features = {
+          "all" = [ "read" "write" "std" "compression" "default" ];
+          "compression" = [ "flate2" "std" ];
+          "default" = [ "read" "compression" ];
+          "pe" = [ "coff" ];
+          "read" = [ "read_core" "coff" "elf" "macho" "pe" "wasm" "unaligned" ];
+          "rustc-dep-of-std" = [ "core" "compiler_builtins" "alloc" ];
+          "wasm" = [ "wasmparser" ];
+          "write" = [ "write_core" "coff" "elf" "macho" ];
+          "write_core" = [ "crc32fast" "indexmap" "std" ];
+        };
+        resolvedDefaultFeatures = [ "coff" "elf" "macho" "pe" "read_core" "unaligned" ];
+      };
       "pkg-config" = rec {
         crateName = "pkg-config";
         version = "0.3.18";
@@ -808,6 +1303,146 @@ rec {
           "Alex Crichton <alex@alexcrichton.com>"
         ];
         
+      };
+      "proc-macro2 0.2.3" = rec {
+        crateName = "proc-macro2";
+        version = "0.2.3";
+        edition = "2015";
+        sha256 = "1q1a53r21dj7zqa8wl5f2wdnpmnz9jqgkiwrg61gznfiqsrxw1yd";
+        authors = [
+          "Alex Crichton <alex@alexcrichton.com>"
+        ];
+        dependencies = [
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.1.0";
+          }
+        ];
+        features = {
+          "default" = [ "proc-macro" ];
+          "nightly" = [ "proc-macro" ];
+        };
+        resolvedDefaultFeatures = [ "default" "proc-macro" ];
+      };
+      "proc-macro2 0.3.8" = rec {
+        crateName = "proc-macro2";
+        version = "0.3.8";
+        edition = "2015";
+        sha256 = "1ryaynnaj39l4zphcg5w8wszndd80vsrv89m5d2293gl6pry41hv";
+        authors = [
+          "Alex Crichton <alex@alexcrichton.com>"
+        ];
+        dependencies = [
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.1.0";
+          }
+        ];
+        features = {
+          "default" = [ "proc-macro" ];
+          "nightly" = [ "proc-macro" ];
+        };
+        resolvedDefaultFeatures = [ "default" "proc-macro" ];
+      };
+      "proc-macro2 1.0.21" = rec {
+        crateName = "proc-macro2";
+        version = "1.0.21";
+        edition = "2018";
+        sha256 = "0b1azz1c2a3rap1kfz2sjinv7narfhssazaq39axvwwlvwb8bqin";
+        authors = [
+          "Alex Crichton <alex@alexcrichton.com>"
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.2.1";
+          }
+        ];
+        features = {
+          "default" = [ "proc-macro" ];
+        };
+        resolvedDefaultFeatures = [ "default" "proc-macro" ];
+      };
+      "quote 0.3.15" = rec {
+        crateName = "quote";
+        version = "0.3.15";
+        edition = "2015";
+        sha256 = "0yhnnix4dzsv8y4wwz4csbnqjfh73al33j35msr10py6cl5r4vks";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        
+      };
+      "quote 0.4.2" = rec {
+        crateName = "quote";
+        version = "0.4.2";
+        edition = "2015";
+        sha256 = "02648jf53xpa7qxai36bhn1wyz986aibbgxnnhp704md4z3i9jhy";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 0.2.3";
+          }
+        ];
+        
+      };
+      "quote 0.5.2" = rec {
+        crateName = "quote";
+        version = "0.5.2";
+        edition = "2015";
+        sha256 = "1s01fh0jl8qv4xggs85yahw0h507nzrxkjbf7vay3zw8d3kcyjcr";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 0.3.8";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "default" = [ "proc-macro" ];
+          "proc-macro" = [ "proc-macro2/proc-macro" ];
+        };
+        resolvedDefaultFeatures = [ "default" "proc-macro" ];
+      };
+      "quote 1.0.7" = rec {
+        crateName = "quote";
+        version = "1.0.7";
+        edition = "2018";
+        sha256 = "0drzd6pq7whq7qhdvvs8wn6pbb0hhc12pz8wv80fb05ixhbksmma";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 1.0.21";
+            usesDefaultFeatures = false;
+          }
+        ];
+        features = {
+          "default" = [ "proc-macro" ];
+          "proc-macro" = [ "proc-macro2/proc-macro" ];
+        };
+        resolvedDefaultFeatures = [ "default" "proc-macro" ];
+      };
+      "rustc-demangle" = rec {
+        crateName = "rustc-demangle";
+        version = "0.1.16";
+        edition = "2015";
+        sha256 = "10qp42sl1wrdbgbbh8rnay2grm976z7hqgz32c4y09l1c071qsac";
+        authors = [
+          "Alex Crichton <alex@alexcrichton.com>"
+        ];
+        features = {
+          "rustc-dep-of-std" = [ "core" "compiler_builtins" ];
+        };
       };
       "simple-osd-battery" = rec {
         crateName = "simple-osd-battery";
@@ -902,6 +1537,38 @@ rec {
         ];
         
       };
+      "simple-osd-mpris" = rec {
+        crateName = "simple-osd-mpris";
+        version = "0.1.0";
+        edition = "2018";
+        crateBin = [
+          { name = "simple-osd-mpris"; path = "src/main.rs"; }
+        ];
+        src = (builtins.filterSource sourceFilter ./mpris);
+        authors = [
+          "Alexander Bantyev <balsoft@balsoft.ru>"
+        ];
+        dependencies = [
+          {
+            name = "libpulse-binding";
+            packageId = "libpulse-binding";
+            optional = true;
+          }
+          {
+            name = "mpris";
+            packageId = "mpris";
+          }
+          {
+            name = "simple-osd-common";
+            packageId = "simple-osd-common";
+          }
+        ];
+        features = {
+          "default" = [ "display_on_volume_changes" ];
+          "display_on_volume_changes" = [ "libpulse-binding" ];
+        };
+        resolvedDefaultFeatures = [ "default" "display_on_volume_changes" "libpulse-binding" ];
+      };
       "simple-osd-pulseaudio" = rec {
         crateName = "simple-osd-pulseaudio";
         version = "0.1.0";
@@ -925,6 +1592,184 @@ rec {
         ];
         
       };
+      "syn 0.11.11" = rec {
+        crateName = "syn";
+        version = "0.11.11";
+        edition = "2015";
+        sha256 = "1b8x8jdsmj6r9ck7n1pg371526n1q90kx6rv6ivcb22w06wr3f6k";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "quote";
+            packageId = "quote 0.3.15";
+            optional = true;
+          }
+          {
+            name = "synom";
+            packageId = "synom";
+            optional = true;
+          }
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.0.4";
+            optional = true;
+          }
+        ];
+        features = {
+          "default" = [ "parsing" "printing" ];
+          "parsing" = [ "unicode-xid" "synom" ];
+          "printing" = [ "quote" ];
+        };
+        resolvedDefaultFeatures = [ "default" "parsing" "printing" "quote" "synom" "unicode-xid" ];
+      };
+      "syn 0.12.15" = rec {
+        crateName = "syn";
+        version = "0.12.15";
+        edition = "2015";
+        sha256 = "1rfcdls9f7s57668bcw2icpsjbw5x73db53rjrmxskf3xfw0az69";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 0.2.3";
+          }
+          {
+            name = "quote";
+            packageId = "quote 0.4.2";
+            optional = true;
+          }
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.1.0";
+          }
+        ];
+        features = {
+          "default" = [ "derive" "parsing" "printing" "clone-impls" ];
+          "printing" = [ "quote" ];
+        };
+        resolvedDefaultFeatures = [ "clone-impls" "default" "derive" "parsing" "printing" "quote" ];
+      };
+      "syn 0.13.11" = rec {
+        crateName = "syn";
+        version = "0.13.11";
+        edition = "2015";
+        sha256 = "16qvx8qyb5v4vjbg9rk8848bw6x4i6vzs8v7f4n1v9pkj9ibzy8l";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 0.3.8";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "quote";
+            packageId = "quote 0.5.2";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.1.0";
+          }
+        ];
+        features = {
+          "default" = [ "derive" "parsing" "printing" "clone-impls" "proc-macro" ];
+          "printing" = [ "quote" ];
+          "proc-macro" = [ "proc-macro2/proc-macro" "quote/proc-macro" ];
+        };
+        resolvedDefaultFeatures = [ "clone-impls" "default" "derive" "extra-traits" "full" "parsing" "printing" "proc-macro" "quote" ];
+      };
+      "syn 1.0.41" = rec {
+        crateName = "syn";
+        version = "1.0.41";
+        edition = "2018";
+        sha256 = "0aw4rkym5pw00ss9limqgx7hbpr8zn4b3hy63na4nl4jyvly7436";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 1.0.21";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "quote";
+            packageId = "quote 1.0.7";
+            optional = true;
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.2.1";
+          }
+        ];
+        features = {
+          "default" = [ "derive" "parsing" "printing" "clone-impls" "proc-macro" ];
+          "printing" = [ "quote" ];
+          "proc-macro" = [ "proc-macro2/proc-macro" "quote/proc-macro" ];
+          "test" = [ "syn-test-suite/all-features" ];
+        };
+        resolvedDefaultFeatures = [ "clone-impls" "default" "derive" "extra-traits" "parsing" "printing" "proc-macro" "quote" "visit" ];
+      };
+      "synom" = rec {
+        crateName = "synom";
+        version = "0.11.3";
+        edition = "2015";
+        sha256 = "1dj536sh5xxhan2h0znxhv0sl6sb7lvzmsmrc3nvl3h1v5p0d4x3";
+        authors = [
+          "David Tolnay <dtolnay@gmail.com>"
+        ];
+        dependencies = [
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.0.4";
+          }
+        ];
+        
+      };
+      "synstructure" = rec {
+        crateName = "synstructure";
+        version = "0.12.4";
+        edition = "2018";
+        sha256 = "00c72ij813xsilssgya6m6f73d0s5zzsld1y26bvhk3kdzbg4d5q";
+        authors = [
+          "Nika Layzell <nika@thelayzells.com>"
+        ];
+        dependencies = [
+          {
+            name = "proc-macro2";
+            packageId = "proc-macro2 1.0.21";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "quote";
+            packageId = "quote 1.0.7";
+            usesDefaultFeatures = false;
+          }
+          {
+            name = "syn";
+            packageId = "syn 1.0.41";
+            usesDefaultFeatures = false;
+            features = [ "derive" "parsing" "printing" "clone-impls" "visit" "extra-traits" ];
+          }
+          {
+            name = "unicode-xid";
+            packageId = "unicode-xid 0.2.1";
+          }
+        ];
+        features = {
+          "default" = [ "proc-macro" ];
+          "proc-macro" = [ "proc-macro2/proc-macro" "syn/proc-macro" "quote/proc-macro" ];
+        };
+        resolvedDefaultFeatures = [ "default" "proc-macro" ];
+      };
       "typenum" = rec {
         crateName = "typenum";
         version = "1.12.0";
@@ -937,6 +1782,57 @@ rec {
         ];
         features = {
         };
+      };
+      "unicode-segmentation" = rec {
+        crateName = "unicode-segmentation";
+        version = "1.6.0";
+        edition = "2015";
+        sha256 = "1h7d48mzpi8hwf5cvnq07warkv86pvapzzzf32hvbjsk20yiagp8";
+        authors = [
+          "kwantam <kwantam@gmail.com>"
+          "Manish Goregaokar <manishsmail@gmail.com>"
+        ];
+        features = {
+        };
+      };
+      "unicode-xid 0.0.4" = rec {
+        crateName = "unicode-xid";
+        version = "0.0.4";
+        edition = "2015";
+        sha256 = "1p5l9h3n3i53cp95fb65p8q3vbwib79ryd9z5z5h5kr9gl6qc7wc";
+        authors = [
+          "erick.tryzelaar <erick.tryzelaar@gmail.com>"
+          "kwantam <kwantam@gmail.com>"
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "default" ];
+      };
+      "unicode-xid 0.1.0" = rec {
+        crateName = "unicode-xid";
+        version = "0.1.0";
+        edition = "2015";
+        sha256 = "1z57lqh4s18rr4x0j4fw4fmp9hf9346h0kmdgqsqx0fhjr3k0wpw";
+        authors = [
+          "erick.tryzelaar <erick.tryzelaar@gmail.com>"
+          "kwantam <kwantam@gmail.com>"
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "default" ];
+      };
+      "unicode-xid 0.2.1" = rec {
+        crateName = "unicode-xid";
+        version = "0.2.1";
+        edition = "2015";
+        sha256 = "0r6mknipyy9vpz8mwmxvkx65ff2ha1n2pxqjj6f46lcn8yrhpzpp";
+        authors = [
+          "erick.tryzelaar <erick.tryzelaar@gmail.com>"
+          "kwantam <kwantam@gmail.com>"
+        ];
+        features = {
+        };
+        resolvedDefaultFeatures = [ "default" ];
       };
       "uom" = rec {
         crateName = "uom";

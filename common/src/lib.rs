@@ -216,5 +216,9 @@ pub mod notify {
                 self.try_update().unwrap();
             });
         }
+
+        pub fn close(&mut self) {
+            self.notification.close().unwrap_or_else(|_| { eprintln!("Failed to close the notification"); });
+        }
     }
 }

@@ -2,9 +2,7 @@
 # balsoft 2020
 
 {
-  inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
-  };
+  inputs = { nixpkgs.url = "github:nixos/nixpkgs"; };
 
   description = "A collection of simple on-screen-display daemons";
 
@@ -18,16 +16,13 @@
           project = import ./Cargo.nix {
             inherit nixpkgs pkgs;
             defaultCrateOverrides = pkgs.defaultCrateOverrides // {
-              simple-osd-battery = oa: {
-                buildInputs = commonDeps;
-              };
+              simple-osd-battery = oa: { buildInputs = commonDeps; };
               simple-osd-bluetooth = oa: {
-                buildInputs = commonDeps ++ [ pkgs.dbus_tools.lib pkgs.dbus_tools.dev ];
+                buildInputs = commonDeps
+                  ++ [ pkgs.dbus_tools.lib pkgs.dbus_tools.dev ];
                 nativeBuildInputs = [ pkgs.pkg-config ];
               };
-              simple-osd-brightness = oa: {
-                buildInputs = commonDeps;
-              };
+              simple-osd-brightness = oa: { buildInputs = commonDeps; };
               # See https://github.com/kolloch/crate2nix/issues/149
               libpulse-binding = oa: {
                 preBuild = "sed s/pulse::libpulse.so.0/pulse/ -i target/*link*";
@@ -37,9 +32,16 @@
                 nativeBuildInputs = [ pkgs.pkg-config ];
                 preBuild = "sed s/pulse::libpulse.so.0/pulse/ -i target/*link*";
               };
+              simple-osd-mpris = oa: {
+                buildInputs = commonDeps ++ [ pkgs.libpulseaudio ];
+                preBuild = "sed s/pulse::libpulse.so.0/pulse/ -i target/*link*";
+              };
             };
           };
-          membersList = builtins.attrValues (builtins.mapAttrs (name: member: { name = pkgs.lib.removePrefix "simple-osd-" name; value = member.build; }) project.workspaceMembers);
+          membersList = builtins.attrValues (builtins.mapAttrs (name: member: {
+            name = pkgs.lib.removePrefix "simple-osd-" name;
+            value = member.build;
+          }) project.workspaceMembers);
         in builtins.listToAttrs membersList);
       apps = builtins.mapAttrs (_:
         builtins.mapAttrs (_: pkg: {
@@ -53,8 +55,9 @@
           paths = builtins.attrValues self.packages.${system};
         }) nixpkgs.legacyPackages;
 
-      devShell = builtins.mapAttrs (system: pkgs: pkgs.mkShell {
-        inputsFrom = builtins.attrValues self.packages.${system};
-      }) nixpkgs.legacyPackages;
+      devShell = builtins.mapAttrs (system: pkgs:
+        pkgs.mkShell {
+          inputsFrom = builtins.attrValues self.packages.${system};
+        }) nixpkgs.legacyPackages;
     };
 }
