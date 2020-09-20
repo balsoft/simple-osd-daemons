@@ -1,5 +1,38 @@
 {
   "nodes": {
+    "crate2nix": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1600641867,
+        "narHash": "sha256-JMkuUewrguz/lsdS4UGP7oB3qXRDYhyfwUyZnhg41ug=",
+        "owner": "balsoft",
+        "repo": "crate2nix",
+        "rev": "a8738225fa4ea4add60483b0ebaa55560e8c5722",
+        "type": "github"
+      },
+      "original": {
+        "owner": "balsoft",
+        "ref": "balsoft/callcrate",
+        "repo": "crate2nix",
+        "type": "github"
+      }
+    },
+    "crates-io-index": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1600641984,
+        "narHash": "sha256-u2juQ6LmitgAlj/lztMhjw6i0dIFEUdyVfYYIABWw90=",
+        "owner": "rust-lang",
+        "repo": "crates.io-index",
+        "rev": "6adca9dd72305e56efc0bd516b6324d2542f71d1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "rust-lang",
+        "repo": "crates.io-index",
+        "type": "github"
+      }
+    },
     "nixpkgs": {
       "locked": {
         "lastModified": 1599773960,
@@ -17,6 +50,8 @@
     },
     "root": {
       "inputs": {
+        "crate2nix": "crate2nix",
+        "crates-io-index": "crates-io-index",
         "nixpkgs": "nixpkgs"
       }
     }

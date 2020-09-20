@@ -32,7 +32,7 @@ Run the daemons you need. At this moment, none of them accept any arguments.
 
 ## FIXME
 
-1. Generate `Cargo.nix` on the fly
+1. ~~Generate `Cargo.nix` on the fly~~
 2. Bluetooth daemon doesn't actually work, since blurz doesn't allow to get the list of connected devices
 3. Need to figure out icons
 

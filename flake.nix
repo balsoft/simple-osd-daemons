@@ -2,20 +2,35 @@
 # balsoft 2020
 
 {
-  inputs = { nixpkgs.url = "github:nixos/nixpkgs"; };
+  inputs = {
+    nixpkgs.url = "github:nixos/nixpkgs";
+    crate2nix = {
+      type = "github";
+      owner = "balsoft";
+      repo = "crate2nix";
+      ref = "balsoft/callcrate";
+      flake = false;
+    };
+    crates-io-index = {
+      url = "github:rust-lang/crates.io-index";
+      flake = false;
+    };
+  };
 
   description = "A collection of simple on-screen-display daemons";
 
-  outputs = { self, nixpkgs }:
+  outputs = { self, nixpkgs, crate2nix, crates-io-index }:
     let forAllSystems = f: builtins.mapAttrs (_: f) nixpkgs.legacyPackages;
     in {
       packages = forAllSystems (pkgs:
         let
           commonDeps = with pkgs; [ libnotify gdk_pixbuf glib ];
 
-          project = import ./Cargo.nix {
-            inherit nixpkgs pkgs;
-            defaultCrateOverrides = pkgs.defaultCrateOverrides // {
+          inherit (import crate2nix { inherit pkgs crates-io-index; }) callCrate;
+
+          project = callCrate {
+            src = ./.;
+            overrides.defaultCrateOverrides = pkgs.defaultCrateOverrides // {
               simple-osd-battery = oa: { buildInputs = commonDeps; };
               simple-osd-bluetooth = oa: {
                 buildInputs = commonDeps
