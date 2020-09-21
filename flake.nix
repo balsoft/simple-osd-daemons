@@ -26,11 +26,11 @@
         let
           commonDeps = with pkgs; [ libnotify gdk_pixbuf glib ];
 
-          inherit (import crate2nix { inherit pkgs crates-io-index; }) callCrate;
+          inherit (import crate2nix { inherit pkgs crates-io-index; })
+            callCrate;
 
-          project = callCrate {
-            src = ./.;
-            overrides.defaultCrateOverrides = pkgs.defaultCrateOverrides // {
+          project = callCrate ./. {
+            defaultCrateOverrides = pkgs.defaultCrateOverrides // {
               simple-osd-battery = oa: { buildInputs = commonDeps; };
               simple-osd-bluetooth = oa: {
                 buildInputs = commonDeps
