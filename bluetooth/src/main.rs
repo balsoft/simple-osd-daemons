@@ -36,7 +36,7 @@ fn main() {
 
         if device_name != last_device_name {
             osd.title = Some(format!("Bluetooth: connected to {}", device_name));
-            osd.update();
+            osd.update().unwrap();
         }
 
         last_device_name = device_name;

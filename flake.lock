@@ -20,11 +20,11 @@
     "crates-io-index": {
       "flake": false,
       "locked": {
-        "lastModified": 1600641984,
-        "narHash": "sha256-u2juQ6LmitgAlj/lztMhjw6i0dIFEUdyVfYYIABWw90=",
+        "lastModified": 1603572719,
+        "narHash": "sha256-58j3Y9P4Rsa2rrY/tc7DqXQeI93NPzDedDq4RChkGMY=",
         "owner": "rust-lang",
         "repo": "crates.io-index",
-        "rev": "6adca9dd72305e56efc0bd516b6324d2542f71d1",
+        "rev": "e7aefc38a0eb2633731c0f78d493f2c040ec3011",
         "type": "github"
       },
       "original": {

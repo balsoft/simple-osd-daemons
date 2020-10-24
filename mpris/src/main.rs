@@ -2,6 +2,7 @@ pub extern crate simple_osd_common as osd;
 pub extern crate mpris;
 
 pub use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use std::ops::{Deref};
 
@@ -97,11 +98,12 @@ mod volume_changes {
 
     pub(super) struct VolumeMonitor {
         mainloop: Arc<Mutex<Mainloop>>,
+        #[allow(dead_code)]
         context: Arc<Mutex<Context>>
     }
 
     impl VolumeMonitor {
-        pub fn new(config: Arc<Mutex<Config>>, trigger: Arc<Mutex<SystemTime>>) -> VolumeMonitor {
+        pub fn new(config: Arc<Mutex<Config>>, trigger: Arc<Mutex<SystemTime>>, dismissed: Arc<Mutex<AtomicBool>>) -> VolumeMonitor {
             let mainloop = Arc::new(Mutex::new
                                     (Mainloop::new().expect("Failed to create mainloop")));
 
@@ -143,6 +145,7 @@ mod volume_changes {
             let subscribe_callback = move |facility, operation, _index| {
                 if facility == Some(Facility::Sink) && operation == Some(Operation::Changed) {
                     *trigger.lock().unwrap() = SystemTime::now();
+                    dismissed.lock().unwrap().store(false, Ordering::Relaxed);
                 }
             };
 
@@ -165,6 +168,8 @@ mod volume_changes {
 fn main() {
     let config = Arc::new(Mutex::new(Config::new("mpris")));
     let mut osd = OSD::new();
+    let mut waiting_on_close = false;
+    let dismissed = Arc::new(Mutex::new(AtomicBool::new(false)));
 
     let player = PlayerFinder::new().unwrap().find_active().unwrap();
 
@@ -177,7 +182,7 @@ fn main() {
 
     #[cfg(feature = "display_on_volume_changes")]
     let vc = if update_on_volume_change {
-        Some(volume_changes::VolumeMonitor::new(config.clone(), trigger.clone()))
+        Some(volume_changes::VolumeMonitor::new(config.clone(), trigger.clone(), dismissed.clone()))
     } else { None };
 
     drop(update_on_volume_change);
@@ -196,11 +201,12 @@ fn main() {
 
         if title != old_title || playback_status != old_playback_status {
             *trigger.lock().unwrap() = SystemTime::now();
+            dismissed.lock().unwrap().store(false, Ordering::Relaxed);
         }
 
         let elapsed = trigger.lock().unwrap().elapsed().unwrap_or(Duration::from_secs(timeout + 1));
 
-        if elapsed.as_secs() < timeout && playback_status != PlaybackStatus::Stopped {
+        if elapsed.as_secs() < timeout && playback_status != PlaybackStatus::Stopped && ! dismissed.lock().unwrap().load(Ordering::Relaxed) {
             let metadata = progress.metadata();
             let artists = metadata.artists().and_then(|artists| format_artists(artists)).unwrap_or("Unknown".to_string());
             let position = progress.position();
@@ -216,8 +222,19 @@ fn main() {
                 PlaybackStatus::Paused => Some("media-playback-pause".to_string()),
                 _ => None
             };
-            osd.update();
-        } else { osd.close() }
+            osd.update().unwrap();
+            if ! waiting_on_close {
+                waiting_on_close = true;
+                let dismissed_clone = dismissed.clone();
+                osd.on_close(move || {
+                    dismissed_clone.lock().unwrap().store(true, Ordering::Relaxed);
+                });
+            }
+        } else {
+            waiting_on_close = false;
+            osd.close()
+        }
+
 
         old_title = title;
         old_playback_status = playback_status;

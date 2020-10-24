@@ -30,7 +30,7 @@ fn main() {
 
         if b != last_b {
             osd.contents = OSDContents::Progress(b/m, OSDProgressText::Percentage);
-            osd.update();
+            osd.update().unwrap();
         }
 
         last_b = b;

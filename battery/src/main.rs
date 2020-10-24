@@ -208,14 +208,14 @@ fn main() -> battery::Result<()> {
                     battery.time_to_full().map(|ttf| {
                         osd.title = Some(format!("Charging, {} until full", format_duration(ttf.value)));
                         osd.urgency = Urgency::Low;
-                        osd.update();
+                        osd.update().unwrap();
                     });
                 }
                 State::Low => {
                     battery.time_to_empty().map(|tte| {
                         osd.title = Some(format!("Low battery, {} remaining", format_duration(tte.value)));
                         osd.urgency = Urgency::Normal;
-                        osd.update();
+                        osd.update().unwrap();
                     });
                 },
                 State::Normal | State::Critical => { }
@@ -226,7 +226,7 @@ fn main() -> battery::Result<()> {
             battery.time_to_empty().map(|tte| {
                 osd.title = Some(format!("Critically low battery, {} remaining", format_duration(tte.value)));
                 osd.urgency = Urgency::Critical;
-                osd.update();
+                osd.update().unwrap();
             });
         }
 

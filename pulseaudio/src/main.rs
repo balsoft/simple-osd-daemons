@@ -67,7 +67,7 @@ fn main() {
             let muted_message = if i.mute { " [MUTED]" } else { "" };
             osd.borrow_mut().title = Some(format!("Volume on {}{}", sink_name, muted_message));
             osd.borrow_mut().contents = OSDContents::Progress(volume.0 as f32 / 65536., OSDProgressText::Percentage);
-            osd.borrow_mut().update();
+            osd.borrow_mut().update().unwrap();
         }
     };
 

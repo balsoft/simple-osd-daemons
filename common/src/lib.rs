@@ -1,9 +1,10 @@
 // This is free and unencumbered software released into the public domain.
 // balsoft 2020
 
-extern crate libnotify;
+extern crate notify_rust;
 extern crate xdg;
 extern crate configparser;
+extern crate dbus;
 
 pub static APPNAME: &str = "simple-osd";
 
@@ -83,17 +84,12 @@ pub mod config {
     }
 }
 pub mod notify {
-    use libnotify::Notification;
-    pub use libnotify::Urgency;
+    use notify_rust::{Notification, NotificationHandle};
+    use dbus::ffidisp::{Connection, BusType};
+    use std::thread;
+    pub use notify_rust::Urgency;
     use crate::config::Config;
     use std::default::Default;
-
-    fn init_if_not_already() {
-        if ! libnotify::is_initted() {
-            println!("Initializing libnotify");
-            libnotify::init(crate::APPNAME).unwrap()
-        }
-    }
 
     pub enum OSDProgressText {
         Percentage,
@@ -109,6 +105,12 @@ pub mod notify {
         fn default() -> OSDContents {
             OSDContents::Simple(None)
         }
+    }
+
+    struct CustomHandle {
+        pub id: u32,
+        pub connection: Connection,
+        pub notification: Notification
     }
 
     pub struct OSD {
@@ -132,13 +134,12 @@ pub mod notify {
         end: String,
 
         // Internal notification
-        notification: Notification
+        notification: Notification,
+        id: Option<u32>
     }
 
     impl OSD {
         pub fn new() -> OSD {
-            init_if_not_already();
-
             let mut config = Config::new("common");
 
             let timeout = config.get("notification", "default timeout").unwrap_or(-1); // -1 means the default timeout of the notification server
@@ -151,20 +152,35 @@ pub mod notify {
             let start = config.get_default("progressbar", "start", String::new());
             let end = config.get_default("progressbar", "end", String::new());
 
-            let notification = Notification::new("", None, None);
+            let notification = Notification::new();
 
             return OSD {
                 title: None, icon: None,
                 contents: OSDContents::default(),
-                urgency: Urgency::Normal,
+                urgency: Urgency::Normal, id: None,
                 timeout,
                 length, full, empty, start, end,
                 notification
             };
         }
 
-        fn get_full_text(&self) -> Option<String> {
-            match &self.contents {
+        fn construct_fake_handle(id: u32, notification: Notification) -> NotificationHandle {
+            let h = CustomHandle
+            { id: id,
+              connection: Connection::get_private(BusType::Session).unwrap(),
+              notification: notification };
+            unsafe {
+                let handle : NotificationHandle = std::mem::transmute(h);
+                return handle;
+            }
+        }
+
+        fn fake_handle(&mut self) -> NotificationHandle {
+            Self::construct_fake_handle(self.id.unwrap_or(0), self.notification.clone())
+        }
+
+        pub fn update(&mut self) -> Result<(), String> {
+            let text = match &self.contents {
                 OSDContents::Simple(text) => text.clone(),
                 OSDContents::Progress(value, text) => {
                     let mut s = String::new();
@@ -197,28 +213,37 @@ pub mod notify {
 
                     Some(s)
                 }
+            };
+
+            self.id.map(|i| self.notification.id(i));
+            let handle = self.notification
+                .summary(self.title.as_deref().unwrap_or(""))
+                .body(&text.unwrap_or("".to_string()))
+                .icon(self.icon.as_deref().unwrap_or(""))
+                .urgency(self.urgency)
+                .finalize()
+                .show()
+                .or(Err("Failed to show the notification"))?;
+            self.id = Some(handle.id());
+            Ok(())
+        }
+
+
+        pub fn on_close<F: 'static>(&mut self, callback: F) where F: std::ops::FnOnce() + Send {
+            if let Some(id) = self.id {
+                let notification = self.notification.clone();
+
+                thread::spawn(move || {
+                    let fake_handle = Self::construct_fake_handle(id, notification);
+                    fake_handle.on_close(callback);
+                });
+            } else {
+                callback();
             }
         }
 
-        fn try_update(&mut self) -> Result<(), String> {
-            self.notification.update(self.title.as_deref().unwrap_or(""), self.get_full_text().as_deref(), self.icon.as_deref()).unwrap();
-            self.notification.set_urgency(self.urgency);
-            self.notification.show().or(Err("Failed to show the notification".to_string()))
-        }
-
-        pub fn update(&mut self) {
-            // The notification server may restart, and in that case the notification becomes invalid;
-            // We need to handle that situation.
-            self.try_update().unwrap_or_else(|_| {
-                libnotify::uninit();
-                init_if_not_already();
-                self.notification = Notification::new("", None, None);
-                self.try_update().unwrap();
-            });
-        }
-
         pub fn close(&mut self) {
-            self.notification.close().unwrap_or_else(|_| { eprintln!("Failed to close the notification"); });
+            self.fake_handle().close();
         }
     }
 }
