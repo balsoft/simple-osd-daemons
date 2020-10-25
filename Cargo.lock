@@ -436,8 +436,7 @@ dependencies = [
 [[package]]
 name = "mpris"
 version = "2.0.0-rc2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "195e67e2b467af5146f517b0d988b5894e425a77c52a9bb5a065513ef3c2e711"
+source = "git+https://github.com/Mange/mpris-rs#c3f47a33d2e816bedaabb6dd1019b884c1681522"
 dependencies = [
  "dbus 0.8.4",
  "derive_is_enum_variant",

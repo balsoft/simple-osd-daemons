@@ -12,5 +12,5 @@ display_on_volume_changes = ["libpulse-binding"]
 
 [dependencies]
 simple-osd-common = { version = "0.1", path = "../common" }
-mpris = "2.0.0-rc2"
+mpris = { git = "https://github.com/Mange/mpris-rs" }
 libpulse-binding = { version = "2.16.2", optional = true }

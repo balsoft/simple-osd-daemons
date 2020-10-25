@@ -8,28 +8,27 @@
       type = "github";
       owner = "balsoft";
       repo = "crate2nix";
-      ref = "balsoft/callcrate";
-      flake = false;
-    };
-    crates-io-index = {
-      url = "github:rust-lang/crates.io-index";
+      ref = "balsoft/fix-tools-nix";
       flake = false;
     };
   };
 
   description = "A collection of simple on-screen-display daemons";
 
-  outputs = { self, nixpkgs, crate2nix, crates-io-index }:
+  outputs = { self, nixpkgs, crate2nix }:
     let forAllSystems = f: builtins.mapAttrs (_: f) nixpkgs.legacyPackages;
     in {
       packages = forAllSystems (pkgs:
         let
           commonDeps = with pkgs; [ libnotify gdk_pixbuf glib ];
 
-          inherit (import crate2nix { inherit pkgs crates-io-index; })
-            callCrate;
+          inherit (import "${crate2nix}/tools.nix" { inherit pkgs; })
+            generatedCargoNix;
 
-          project = callCrate ./. {
+          project = pkgs.callPackage (generatedCargoNix {
+            name = "simple-osd-daemons";
+            src = ./.;
+          }) {
             defaultCrateOverrides = pkgs.defaultCrateOverrides // {
               simple-osd-battery = oa: { buildInputs = commonDeps; };
               simple-osd-bluetooth = oa: {
