@@ -5,10 +5,7 @@
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs";
     crate2nix = {
-      type = "github";
-      owner = "balsoft";
-      repo = "crate2nix";
-      ref = "balsoft/fix-tools-nix";
+      url = "github:balsoft/crate2nix/tools-nix-version-comparison";
       flake = false;
     };
   };

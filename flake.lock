@@ -3,16 +3,16 @@
     "crate2nix": {
       "flake": false,
       "locked": {
-        "lastModified": 1603629926,
-        "narHash": "sha256-mQg9HzU0tRCKgk8GFhQ2QrxyCUjGgsJqH5JA4SZDyc4=",
+        "lastModified": 1608814925,
+        "narHash": "sha256-GdFBG2LmpbY4C1OJBFfWLMKXzGyFq4mJBK+SVMNNE+8=",
         "owner": "balsoft",
         "repo": "crate2nix",
-        "rev": "9b7b8ea918e3b28538868f8aeb8318f02bb75cb9",
+        "rev": "68be3d90f31bf0bfd525da77e0ae6e89f48abd24",
         "type": "github"
       },
       "original": {
         "owner": "balsoft",
-        "ref": "balsoft/fix-tools-nix",
+        "ref": "tools-nix-version-comparison",
         "repo": "crate2nix",
         "type": "github"
       }
