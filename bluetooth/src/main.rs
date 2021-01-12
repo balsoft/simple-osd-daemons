@@ -32,7 +32,7 @@ fn main() {
     loop {
         let device = adapter.get_first_device().unwrap();
 
-        device_name = device.get_name().unwrap_or(String::from(""));
+        device_name = device.get_name().ok().unwrap_or_else(String::new);
 
         if device_name != last_device_name {
             osd.title = Some(format!("Bluetooth: connected to {}", device_name));

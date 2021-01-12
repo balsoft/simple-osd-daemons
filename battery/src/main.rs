@@ -39,7 +39,7 @@ fn threshold_sane(thresh: Threshold) -> Option<Threshold> {
 }
 
 fn parse_threshold(thresh: String) -> Option<Threshold> {
-    let mut s = thresh.clone();
+    let mut s = thresh;
 
     let last = s.pop();
 
@@ -93,7 +93,7 @@ fn format_duration(duration: f32) -> String {
     }
     let mut s = String::new();
     if d < 0 {
-        s.push_str("-");
+        s.push('-');
         d = -d;
     }
     let hours = d / 3600;
@@ -105,11 +105,11 @@ fn format_duration(duration: f32) -> String {
         s.push_str(&format!("{}h", hours));
     }
     if minutes > 0 {
-        if hours > 0 { s.push_str(" "); }
+        if hours > 0 { s.push(' '); }
         s.push_str(&format!("{}m", minutes));
     }
     if seconds > 0 {
-        if hours > 0 || minutes > 0 { s.push_str(" "); }
+        if hours > 0 || minutes > 0 { s.push(' '); }
         s.push_str(&format!("{}s", seconds));
     }
     s
@@ -205,29 +205,29 @@ fn main() -> battery::Result<()> {
         if state != last_state {
             match state {
                 State::Charging => {
-                    battery.time_to_full().map(|ttf| {
+                    if let Some(ttf) = battery.time_to_full() {
                         osd.title = Some(format!("Charging, {} until full", format_duration(ttf.value)));
                         osd.urgency = Urgency::Low;
                         osd.update().unwrap();
-                    });
+                    };
                 }
                 State::Low => {
-                    battery.time_to_empty().map(|tte| {
+                    if let Some(tte) = battery.time_to_empty() {
                         osd.title = Some(format!("Low battery, {} remaining", format_duration(tte.value)));
                         osd.urgency = Urgency::Normal;
                         osd.update().unwrap();
-                    });
+                    };
                 },
                 State::Normal | State::Critical => { }
             }
         }
 
         if state == State::Critical {
-            battery.time_to_empty().map(|tte| {
+            if let Some(tte) = battery.time_to_empty() {
                 osd.title = Some(format!("Critically low battery, {} remaining", format_duration(tte.value)));
                 osd.urgency = Urgency::Critical;
                 osd.update().unwrap();
-            });
+            };
         }
 
         thread::sleep(Duration::from_secs(refresh_interval));

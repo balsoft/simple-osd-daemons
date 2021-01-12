@@ -175,8 +175,8 @@ fn main() {
 
     let mut progress_tracker = player.track_progress(100).unwrap();
 
-    let update_on_volume_change = config.clone().lock().unwrap().get_default("default", "update on volume change", true);
-    let timeout = config.clone().lock().unwrap().get_default("default", "notification display time", 5);
+    let update_on_volume_change = config.lock().unwrap().get_default("default", "update on volume change", true);
+    let timeout = config.lock().unwrap().get_default("default", "notification display time", 5);
 
     let trigger = Arc::new(Mutex::new(SystemTime::now()));
 
@@ -185,7 +185,6 @@ fn main() {
         Some(volume_changes::VolumeMonitor::new(config.clone(), trigger.clone(), dismissed.clone()))
     } else { None };
 
-    drop(update_on_volume_change);
     drop(config);
 
     let mut title;
@@ -204,13 +203,13 @@ fn main() {
             dismissed.lock().unwrap().store(false, Ordering::Relaxed);
         }
 
-        let elapsed = trigger.lock().unwrap().elapsed().unwrap_or(Duration::from_secs(timeout + 1));
+        let elapsed = trigger.lock().unwrap().elapsed().unwrap_or_else(|_| Duration::from_secs(timeout + 1));
 
         if elapsed.as_secs() < timeout && playback_status != PlaybackStatus::Stopped && ! dismissed.lock().unwrap().load(Ordering::Relaxed) {
             let metadata = progress.metadata();
-            let artists = metadata.artists().and_then(|artists| format_artists(artists)).unwrap_or("Unknown".to_string());
+            let artists = metadata.artists().and_then(format_artists).unwrap_or_else(|| "Unknown".to_string());
             let position = progress.position();
-            let length = progress.length().unwrap_or(Duration::from_secs(100000000));
+            let length = progress.length().unwrap_or_else(|| Duration::from_secs(100000000));
 
             osd.title = Some(format!("{:?}: {} - {}", playback_status, title, artists));
             let ratio = position.as_secs_f32() / length.as_secs_f32();
@@ -240,6 +239,6 @@ fn main() {
         old_playback_status = playback_status;
 
         #[cfg(feature = "display_on_volume_changes")]
-        vc.as_ref().map(|v| v.tick());
+        if let Some(v) = vc.as_ref() { v.tick() };
     }
 }

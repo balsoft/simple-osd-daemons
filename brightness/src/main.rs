@@ -28,7 +28,7 @@ fn main() {
     loop {
         b = brightness.get_brightness().unwrap() as f32;
 
-        if b != last_b {
+        if (b - last_b).abs() > 0.1 {
             osd.contents = OSDContents::Progress(b/m, OSDProgressText::Percentage);
             osd.update().unwrap();
         }

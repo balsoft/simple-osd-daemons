@@ -154,24 +154,24 @@ pub mod notify {
 
             let notification = Notification::new();
 
-            return OSD {
+            OSD {
                 title: None, icon: None,
                 contents: OSDContents::default(),
                 urgency: Urgency::Normal, id: None,
                 timeout,
                 length, full, empty, start, end,
                 notification
-            };
+            }
         }
 
         fn construct_fake_handle(id: u32, notification: Notification) -> NotificationHandle {
             let h = CustomHandle
-            { id: id,
+            { id,
               connection: Connection::get_private(BusType::Session).unwrap(),
-              notification: notification };
+              notification };
             unsafe {
                 let handle : NotificationHandle = std::mem::transmute(h);
-                return handle;
+                handle
             }
         }
 
@@ -197,16 +197,16 @@ pub mod notify {
 
                     s.push_str(self.end.as_str());
 
-                    s.push_str(" ");
+                    s.push(' ');
 
                     match text {
                         OSDProgressText::Percentage => {
                             s.push_str(((value * 100.) as i32).to_string().as_str());
 
-                            s.push_str("%");
+                            s.push('%');
                         },
                         OSDProgressText::Text(text) => {
-                            text.as_ref().map(|text| s.push_str(text.as_str()));
+                            if let Some(text) = text.as_ref() { s.push_str(text.as_str()) };
                         }
                     }
 
@@ -218,7 +218,7 @@ pub mod notify {
             self.id.map(|i| self.notification.id(i));
             let handle = self.notification
                 .summary(self.title.as_deref().unwrap_or(""))
-                .body(&text.unwrap_or("".to_string()))
+                .body(&text.unwrap_or_else(String::new))
                 .icon(self.icon.as_deref().unwrap_or(""))
                 .urgency(self.urgency)
                 .finalize()
@@ -244,6 +244,12 @@ pub mod notify {
 
         pub fn close(&mut self) {
             self.fake_handle().close();
+        }
+    }
+
+    impl Default for OSD {
+        fn default() -> Self {
+            Self::new()
         }
     }
 }
