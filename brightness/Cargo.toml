@@ -8,4 +8,5 @@ edition = "2018"
 
 [dependencies]
 simple-osd-common = { version = "0.1", path = "../common" }
-backlight = "0.1.1"
+sysfs-class = "0.1.2"
+thiserror = "1.0"

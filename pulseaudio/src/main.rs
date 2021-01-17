@@ -5,15 +5,15 @@ extern crate libpulse_binding as pulse;
 
 extern crate simple_osd_common as osd;
 
-use std::rc::Rc;
 use std::cell::RefCell;
+use std::rc::Rc;
 
-use pulse::mainloop::standard::Mainloop;
-use pulse::context::Context;
 use osd::config::Config;
-use osd::notify::{OSD, OSDContents, OSDProgressText};
+use osd::notify::{OSDContents, OSDProgressText, OSD};
+use pulse::context::Context;
+use pulse::mainloop::standard::Mainloop;
 
-use pulse::context::subscribe::{subscription_masks, Operation, Facility};
+use pulse::context::subscribe::{subscription_masks, Facility, Operation};
 
 use pulse::callbacks::ListResult;
 use pulse::context::introspect::SinkInfo;
@@ -23,24 +23,29 @@ fn main() {
 
     let mut config = Config::new("pulseaudio");
 
-    let mut context = Context::new(
-        &mainloop, osd::APPNAME
-    ).expect("Failed to create new context");
+    let mut context = Context::new(&mainloop, osd::APPNAME).expect("Failed to create new context");
 
-    context.connect(config.get::<String>("default", "server").as_deref(), 0, None)
+    context
+        .connect(
+            config.get::<String>("default", "server").as_deref(),
+            0,
+            None,
+        )
         .expect("Failed to connect context");
 
     // Wait for context to be ready
     loop {
         mainloop.iterate(false);
         match context.get_state() {
-            pulse::context::State::Ready => { break; },
-            pulse::context::State::Failed |
-            pulse::context::State::Unconnected |
-            pulse::context::State::Terminated => {
+            pulse::context::State::Ready => {
+                break;
+            }
+            pulse::context::State::Failed
+            | pulse::context::State::Unconnected
+            | pulse::context::State::Terminated => {
                 eprintln!("Context state failed/terminated, quitting...");
                 return;
-            },
+            }
             _ => {}
         }
     }
@@ -48,14 +53,13 @@ fn main() {
     eprintln!("connected");
 
     context.subscribe(subscription_masks::SINK, |success| {
-        if ! success {
+        if !success {
             eprintln!("failed to subscribe to events");
             return;
         }
     });
 
     let introspector = context.introspect();
-
 
     let osd = Rc::new(RefCell::new(OSD::new()));
     osd.borrow_mut().icon = Some(String::from("multimedia-volume-control"));
@@ -66,7 +70,8 @@ fn main() {
             let sink_name = i.description.as_deref().unwrap_or("Unnamed sink");
             let muted_message = if i.mute { " [MUTED]" } else { "" };
             osd.borrow_mut().title = Some(format!("Volume on {}{}", sink_name, muted_message));
-            osd.borrow_mut().contents = OSDContents::Progress(volume.0 as f32 / 65536., OSDProgressText::Percentage);
+            osd.borrow_mut().contents =
+                OSDContents::Progress(volume.0 as f32 / 65536., OSDProgressText::Percentage);
             osd.borrow_mut().update().unwrap();
         }
     };

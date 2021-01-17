@@ -4,14 +4,13 @@
 extern crate blurz;
 extern crate simple_osd_common as osd;
 
-use blurz::bluetooth_session::BluetoothSession;
 use blurz::bluetooth_adapter::BluetoothAdapter;
+use blurz::bluetooth_session::BluetoothSession;
 
 use osd::config::Config;
-use osd::notify::{OSD, Urgency};
+use osd::notify::{Urgency, OSD};
 
 fn main() {
-
     let mut config = Config::new("bluetooth");
 
     let refresh_interval = config.get_default("default", "refresh interval", 15);

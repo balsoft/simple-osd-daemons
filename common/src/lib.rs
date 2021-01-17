@@ -1,30 +1,29 @@
 // This is free and unencumbered software released into the public domain.
 // balsoft 2020
 
-extern crate notify_rust;
-extern crate xdg;
 extern crate configparser;
 extern crate dbus;
+extern crate notify_rust;
+extern crate xdg;
 
 pub static APPNAME: &str = "simple-osd";
 
 pub mod config {
     use configparser::ini::Ini;
+    use std::fs::{metadata, File};
     use xdg::BaseDirectories;
-    use std::fs::{File, metadata};
 
-    use std::str::FromStr;
+    use std::default::Default;
     use std::fmt::Debug;
     use std::fmt::Display;
-    use std::default::Default;
+    use std::str::FromStr;
 
     pub struct Config {
         config_path: Option<String>,
-        config: Ini
+        config: Ini,
     }
 
     impl Config {
-
         pub fn new(name: &'static str) -> Config {
             let mut config = Ini::new();
 
@@ -33,7 +32,10 @@ pub mod config {
             let config_path_option = xdg_dirs.place_config_file(name).ok();
 
             if let Some(config_path_buf) = config_path_option.clone() {
-                if metadata(config_path_buf.clone()).map(|m| m.is_file()).unwrap_or(false) {
+                if metadata(config_path_buf.clone())
+                    .map(|m| m.is_file())
+                    .unwrap_or(false)
+                {
                     let _ = config.load(config_path_buf.to_str().unwrap());
                 } else {
                     let _ = File::create(config_path_buf);
@@ -42,32 +44,42 @@ pub mod config {
 
             let config_path = config_path_option.map(|p| p.to_str().unwrap().to_string());
 
-            Config { config, config_path }
+            Config {
+                config,
+                config_path,
+            }
         }
 
         pub fn get<T>(&mut self, section: &str, key: &str) -> Option<T>
-          where
+        where
             T: FromStr,
-            <T as FromStr>::Err: Debug
+            <T as FromStr>::Err: Debug,
         {
-            self.config.get(section, key).map(|s: String| { s.parse().unwrap() }).or_else(|| {
-                self.config.set(section, key, None);
-                self.config_path.as_ref().map(|path| self.config.write(path.as_str()));
-                None
-            })
+            self.config
+                .get(section, key)
+                .map(|s: String| s.parse().unwrap())
+                .or_else(|| {
+                    self.config.set(section, key, None);
+                    self.config_path
+                        .as_ref()
+                        .map(|path| self.config.write(path.as_str()));
+                    None
+                })
         }
 
         pub fn get_default<T>(&mut self, section: &str, key: &str, default: T) -> T
-          where
+        where
             T: FromStr,
             T: Display,
-            <T as FromStr>::Err: Debug
+            <T as FromStr>::Err: Debug,
         {
             let val: Option<T> = self.get(section, key);
 
             val.unwrap_or_else(|| {
                 self.config.set(section, key, Some(format!("{}", default)));
-                self.config_path.as_ref().map(|path| self.config.write(path.as_str()));
+                self.config_path
+                    .as_ref()
+                    .map(|path| self.config.write(path.as_str()));
                 default
             })
         }
@@ -77,28 +89,28 @@ pub mod config {
             T: FromStr,
             T: Display,
             T: Default,
-            <T as FromStr>::Err: Debug
+            <T as FromStr>::Err: Debug,
         {
             self.get_default(section, key, T::default())
         }
     }
 }
 pub mod notify {
-    use notify_rust::{Notification, NotificationHandle};
-    use dbus::ffidisp::{Connection, BusType};
-    use std::thread;
-    pub use notify_rust::Urgency;
     use crate::config::Config;
+    use dbus::ffidisp::{BusType, Connection};
+    pub use notify_rust::Urgency;
+    use notify_rust::{Notification, NotificationHandle};
     use std::default::Default;
+    use std::thread;
 
     pub enum OSDProgressText {
         Percentage,
-        Text(Option<String>)
+        Text(Option<String>),
     }
 
     pub enum OSDContents {
         Simple(Option<String>),
-        Progress(f32, OSDProgressText)
+        Progress(f32, OSDProgressText),
     }
 
     impl Default for OSDContents {
@@ -110,7 +122,7 @@ pub mod notify {
     struct CustomHandle {
         pub id: u32,
         pub connection: Connection,
-        pub notification: Notification
+        pub notification: Notification,
     }
 
     pub struct OSD {
@@ -135,7 +147,7 @@ pub mod notify {
 
         // Internal notification
         notification: Notification,
-        id: Option<u32>
+        id: Option<u32>,
     }
 
     impl OSD {
@@ -155,22 +167,29 @@ pub mod notify {
             let notification = Notification::new();
 
             OSD {
-                title: None, icon: None,
+                title: None,
+                icon: None,
                 contents: OSDContents::default(),
-                urgency: Urgency::Normal, id: None,
+                urgency: Urgency::Normal,
+                id: None,
                 timeout,
-                length, full, empty, start, end,
-                notification
+                length,
+                full,
+                empty,
+                start,
+                end,
+                notification,
             }
         }
 
         fn construct_fake_handle(id: u32, notification: Notification) -> NotificationHandle {
-            let h = CustomHandle
-            { id,
-              connection: Connection::get_private(BusType::Session).unwrap(),
-              notification };
+            let h = CustomHandle {
+                id,
+                connection: Connection::get_private(BusType::Session).unwrap(),
+                notification,
+            };
             unsafe {
-                let handle : NotificationHandle = std::mem::transmute(h);
+                let handle: NotificationHandle = std::mem::transmute(h);
                 handle
             }
         }
@@ -204,19 +223,21 @@ pub mod notify {
                             s.push_str(((value * 100.) as i32).to_string().as_str());
 
                             s.push('%');
-                        },
+                        }
                         OSDProgressText::Text(text) => {
-                            if let Some(text) = text.as_ref() { s.push_str(text.as_str()) };
+                            if let Some(text) = text.as_ref() {
+                                s.push_str(text.as_str())
+                            };
                         }
                     }
-
 
                     Some(s)
                 }
             };
 
             self.id.map(|i| self.notification.id(i));
-            let handle = self.notification
+            let handle = self
+                .notification
                 .summary(self.title.as_deref().unwrap_or(""))
                 .body(&text.unwrap_or_else(String::new))
                 .icon(self.icon.as_deref().unwrap_or(""))
@@ -228,8 +249,10 @@ pub mod notify {
             Ok(())
         }
 
-
-        pub fn on_close<F: 'static>(&mut self, callback: F) where F: std::ops::FnOnce() + Send {
+        pub fn on_close<F: 'static>(&mut self, callback: F)
+        where
+            F: std::ops::FnOnce() + Send,
+        {
             if let Some(id) = self.id {
                 let notification = self.notification.clone();
 

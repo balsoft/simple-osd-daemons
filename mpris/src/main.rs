@@ -1,13 +1,13 @@
-pub extern crate simple_osd_common as osd;
 pub extern crate mpris;
+pub extern crate simple_osd_common as osd;
 
-pub use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+pub use std::sync::{Arc, Mutex};
 
-use std::ops::{Deref};
+use std::ops::Deref;
 
-pub use osd::notify::{OSD, OSDContents, OSDProgressText};
 pub use osd::config::Config;
+pub use osd::notify::{OSDContents, OSDProgressText, OSD};
 
 use mpris::{PlaybackStatus, PlayerFinder};
 
@@ -44,12 +44,12 @@ fn format_artists(artists: Vec<&str>) -> Option<String> {
     v.reverse();
 
     if v.len() < 2 {
-        return Some(v.pop()?.to_string())
+        return Some(v.pop()?.to_string());
     }
 
     let mut s = String::new();
 
-    for _ in 0..v.len()-2 {
+    for _ in 0..v.len() - 2 {
         s.push_str(v.pop()?);
         s.push_str(", ")
     }
@@ -72,16 +72,24 @@ mod format_artists_test {
     }
     #[test]
     fn one() {
-        assert_eq!(format_artists(["John Doe"].to_vec()), Some("John Doe".to_string()));
+        assert_eq!(
+            format_artists(["John Doe"].to_vec()),
+            Some("John Doe".to_string())
+        );
     }
     #[test]
     fn two() {
-        assert_eq!(format_artists(["John Doe", "Jane Doe"].to_vec()), Some("John Doe & Jane Doe".to_string()));
+        assert_eq!(
+            format_artists(["John Doe", "Jane Doe"].to_vec()),
+            Some("John Doe & Jane Doe".to_string())
+        );
     }
     #[test]
     fn many() {
-        assert_eq!(format_artists(["John Doe", "Jane Doe", "Chris P. Bacon", "Seymore Clevarge"].to_vec()),
-                   Some("John Doe, Jane Doe, Chris P. Bacon & Seymore Clevarge".to_string()));
+        assert_eq!(
+            format_artists(["John Doe", "Jane Doe", "Chris P. Bacon", "Seymore Clevarge"].to_vec()),
+            Some("John Doe, Jane Doe, Chris P. Bacon & Seymore Clevarge".to_string())
+        );
     }
 }
 
@@ -91,56 +99,76 @@ mod volume_changes {
 
     use super::*;
 
-    use pulse::mainloop::standard::Mainloop;
-    use pulse::mainloop::standard::IterateResult;
+    use pulse::context::subscribe::{subscription_masks, Facility, Operation};
     use pulse::context::Context;
-    use pulse::context::subscribe::{subscription_masks, Operation, Facility};
+    use pulse::mainloop::standard::IterateResult;
+    use pulse::mainloop::standard::Mainloop;
 
     pub(super) struct VolumeMonitor {
         mainloop: Arc<Mutex<Mainloop>>,
         #[allow(dead_code)]
-        context: Arc<Mutex<Context>>
+        context: Arc<Mutex<Context>>,
     }
 
     impl VolumeMonitor {
-        pub fn new(config: Arc<Mutex<Config>>, trigger: Arc<Mutex<SystemTime>>, dismissed: Arc<Mutex<AtomicBool>>) -> VolumeMonitor {
-            let mainloop = Arc::new(Mutex::new
-                                    (Mainloop::new().expect("Failed to create mainloop")));
+        pub fn new(
+            config: Arc<Mutex<Config>>,
+            trigger: Arc<Mutex<SystemTime>>,
+            dismissed: Arc<Mutex<AtomicBool>>,
+        ) -> VolumeMonitor {
+            let mainloop = Arc::new(Mutex::new(
+                Mainloop::new().expect("Failed to create mainloop"),
+            ));
 
-            let context = Arc::new(Mutex::new(Context::new(
-                mainloop.lock().unwrap().deref(), osd::APPNAME
-            ).expect("Failed to create new context")));
+            let context = Arc::new(Mutex::new(
+                Context::new(mainloop.lock().unwrap().deref(), osd::APPNAME)
+                    .expect("Failed to create new context"),
+            ));
 
-            context.lock().unwrap().connect(config.lock().unwrap().get::<String>("pulseaudio", "server").as_deref(), 0, None)
+            context
+                .lock()
+                .unwrap()
+                .connect(
+                    config
+                        .lock()
+                        .unwrap()
+                        .get::<String>("pulseaudio", "server")
+                        .as_deref(),
+                    0,
+                    None,
+                )
                 .expect("Failed to connect context");
-
 
             // Wait for context to be ready
             loop {
                 match mainloop.lock().unwrap().iterate(false) {
-                    IterateResult::Quit(_) |
-                    IterateResult::Err(_) => {
+                    IterateResult::Quit(_) | IterateResult::Err(_) => {
                         panic!("Iterate state was not success, quitting...");
-                    },
-                    IterateResult::Success(_) => {},
+                    }
+                    IterateResult::Success(_) => {}
                 }
                 match context.lock().unwrap().get_state() {
-                    pulse::context::State::Ready => { break; },
-                    pulse::context::State::Failed |
-                    pulse::context::State::Unconnected |
-                    pulse::context::State::Terminated => {
+                    pulse::context::State::Ready => {
+                        break;
+                    }
+                    pulse::context::State::Failed
+                    | pulse::context::State::Unconnected
+                    | pulse::context::State::Terminated => {
                         panic!("Context state failed/terminated, quitting...");
-                    },
+                    }
                     _ => {}
                 }
             }
 
-            context.lock().unwrap().subscribe(subscription_masks::SINK, |success| {
-                if ! success {
-                    eprintln!("failed to subscribe to events");
-                    return;
-                }
-            });
+            context
+                .lock()
+                .unwrap()
+                .subscribe(subscription_masks::SINK, |success| {
+                    if !success {
+                        eprintln!("failed to subscribe to events");
+                        return;
+                    }
+                });
 
             let subscribe_callback = move |facility, operation, _index| {
                 if facility == Some(Facility::Sink) && operation == Some(Operation::Changed) {
@@ -149,17 +177,19 @@ mod volume_changes {
                 }
             };
 
-            context.lock().unwrap().set_subscribe_callback(Some(Box::new(subscribe_callback)));
+            context
+                .lock()
+                .unwrap()
+                .set_subscribe_callback(Some(Box::new(subscribe_callback)));
 
             VolumeMonitor { mainloop, context }
         }
-        pub fn tick(& self) {
+        pub fn tick(&self) {
             match self.mainloop.lock().unwrap().iterate(false) {
-                IterateResult::Quit(_) |
-                IterateResult::Err(_) => {
+                IterateResult::Quit(_) | IterateResult::Err(_) => {
                     panic!("Iterate state was not success, quitting...");
-                },
-                IterateResult::Success(_) => { },
+                }
+                IterateResult::Success(_) => {}
             }
         }
     }
@@ -175,15 +205,28 @@ fn main() {
 
     let mut progress_tracker = player.track_progress(100).unwrap();
 
-    let update_on_volume_change = config.lock().unwrap().get_default("default", "update on volume change", true);
-    let timeout = config.lock().unwrap().get_default("default", "notification display time", 5);
+    let update_on_volume_change =
+        config
+            .lock()
+            .unwrap()
+            .get_default("default", "update on volume change", true);
+    let timeout = config
+        .lock()
+        .unwrap()
+        .get_default("default", "notification display time", 5);
 
     let trigger = Arc::new(Mutex::new(SystemTime::now()));
 
     #[cfg(feature = "display_on_volume_changes")]
     let vc = if update_on_volume_change {
-        Some(volume_changes::VolumeMonitor::new(config.clone(), trigger.clone(), dismissed.clone()))
-    } else { None };
+        Some(volume_changes::VolumeMonitor::new(
+            config.clone(),
+            trigger.clone(),
+            dismissed.clone(),
+        ))
+    } else {
+        None
+    };
 
     drop(config);
 
@@ -203,30 +246,49 @@ fn main() {
             dismissed.lock().unwrap().store(false, Ordering::Relaxed);
         }
 
-        let elapsed = trigger.lock().unwrap().elapsed().unwrap_or_else(|_| Duration::from_secs(timeout + 1));
+        let elapsed = trigger
+            .lock()
+            .unwrap()
+            .elapsed()
+            .unwrap_or_else(|_| Duration::from_secs(timeout + 1));
 
-        if elapsed.as_secs() < timeout && playback_status != PlaybackStatus::Stopped && ! dismissed.lock().unwrap().load(Ordering::Relaxed) {
+        if elapsed.as_secs() < timeout
+            && playback_status != PlaybackStatus::Stopped
+            && !dismissed.lock().unwrap().load(Ordering::Relaxed)
+        {
             let metadata = progress.metadata();
-            let artists = metadata.artists().and_then(format_artists).unwrap_or_else(|| "Unknown".to_string());
+            let artists = metadata
+                .artists()
+                .and_then(format_artists)
+                .unwrap_or_else(|| "Unknown".to_string());
             let position = progress.position();
-            let length = progress.length().unwrap_or_else(|| Duration::from_secs(100000000));
+            let length = progress
+                .length()
+                .unwrap_or_else(|| Duration::from_secs(100000000));
 
             osd.title = Some(format!("{:?}: {} - {}", playback_status, title, artists));
             let ratio = position.as_secs_f32() / length.as_secs_f32();
-            let text = format!("{} / {}", format_duration(position), format_duration(length));
+            let text = format!(
+                "{} / {}",
+                format_duration(position),
+                format_duration(length)
+            );
             osd.contents = OSDContents::Progress(ratio, OSDProgressText::Text(Some(text)));
             osd.timeout = 1;
             osd.icon = match playback_status {
                 PlaybackStatus::Playing => Some("media-playback-start".to_string()),
                 PlaybackStatus::Paused => Some("media-playback-pause".to_string()),
-                _ => None
+                _ => None,
             };
             osd.update().unwrap();
-            if ! waiting_on_close {
+            if !waiting_on_close {
                 waiting_on_close = true;
                 let dismissed_clone = dismissed.clone();
                 osd.on_close(move || {
-                    dismissed_clone.lock().unwrap().store(true, Ordering::Relaxed);
+                    dismissed_clone
+                        .lock()
+                        .unwrap()
+                        .store(true, Ordering::Relaxed);
                 });
             }
         } else {
@@ -234,11 +296,12 @@ fn main() {
             osd.close()
         }
 
-
         old_title = title;
         old_playback_status = playback_status;
 
         #[cfg(feature = "display_on_volume_changes")]
-        if let Some(v) = vc.as_ref() { v.tick() };
+        if let Some(v) = vc.as_ref() {
+            v.tick()
+        };
     }
 }

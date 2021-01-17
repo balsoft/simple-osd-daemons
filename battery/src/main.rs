@@ -8,13 +8,13 @@ use std::io;
 use std::thread;
 use std::time::Duration;
 
-use osd::notify::{OSD, Urgency};
 use osd::config::Config;
+use osd::notify::{Urgency, OSD};
 
 #[derive(Debug, Eq, PartialEq)]
 enum Threshold {
     Percentage(i32),
-    Minutes(i32)
+    Minutes(i32),
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -22,17 +22,21 @@ enum State {
     Low,
     Critical,
     Charging,
-    Normal
+    Normal,
 }
 
 fn threshold_sane(thresh: Threshold) -> Option<Threshold> {
     match thresh {
         Threshold::Percentage(p) => {
-            if p < 0 || p > 100 { return None; }
+            if p < 0 || p > 100 {
+                return None;
+            }
             Some(thresh)
-        },
+        }
         Threshold::Minutes(m) => {
-            if m < 0 { return None; }
+            if m < 0 {
+                return None;
+            }
             Some(thresh)
         }
     }
@@ -46,9 +50,12 @@ fn parse_threshold(thresh: String) -> Option<Threshold> {
     let parsed = s.parse();
 
     match last {
-        Some('%') => parsed.map(Threshold::Percentage).ok().and_then(threshold_sane),
+        Some('%') => parsed
+            .map(Threshold::Percentage)
+            .ok()
+            .and_then(threshold_sane),
         Some('m') => parsed.map(Threshold::Minutes).ok().and_then(threshold_sane),
-        _ => None
+        _ => None,
     }
 }
 
@@ -58,11 +65,17 @@ mod parse_threshold_tests {
     use super::Threshold;
     #[test]
     fn parses_percentage() {
-        assert_eq!(parse_threshold("15%".to_string()), Some(Threshold::Percentage(15)));
+        assert_eq!(
+            parse_threshold("15%".to_string()),
+            Some(Threshold::Percentage(15))
+        );
     }
     #[test]
     fn parses_minutes() {
-        assert_eq!(parse_threshold("10m".to_string()), Some(Threshold::Minutes(10)));
+        assert_eq!(
+            parse_threshold("10m".to_string()),
+            Some(Threshold::Minutes(10))
+        );
     }
     #[test]
     fn fails_on_incorrect_percentage() {
@@ -100,16 +113,19 @@ fn format_duration(duration: f32) -> String {
     let minutes = (d % 3600) / 60;
     let seconds = d % 60;
 
-
     if hours > 0 {
         s.push_str(&format!("{}h", hours));
     }
     if minutes > 0 {
-        if hours > 0 { s.push(' '); }
+        if hours > 0 {
+            s.push(' ');
+        }
         s.push_str(&format!("{}m", minutes));
     }
     if seconds > 0 {
-        if hours > 0 || minutes > 0 { s.push(' '); }
+        if hours > 0 || minutes > 0 {
+            s.push(' ');
+        }
         s.push_str(&format!("{}s", seconds));
     }
     s
@@ -158,8 +174,10 @@ fn main() -> battery::Result<()> {
     let low_threshold_str = config.get_default("threshold", "low", String::from("30m"));
     let critical_threshold_str = config.get_default("threshold", "critical", String::from("10m"));
 
-    let low_threshold = parse_threshold(low_threshold_str).expect("Low threshold is incorrect: must be either a percentage or minutes");
-    let critical_threshold = parse_threshold(critical_threshold_str).expect("Critical threshold is incorrect: must be either a percentage or minutes");
+    let low_threshold = parse_threshold(low_threshold_str)
+        .expect("Low threshold is incorrect: must be either a percentage or minutes");
+    let critical_threshold = parse_threshold(critical_threshold_str)
+        .expect("Critical threshold is incorrect: must be either a percentage or minutes");
 
     let refresh_interval = config.get_default("default", "refresh interval", 30);
 
@@ -182,7 +200,6 @@ fn main() -> battery::Result<()> {
     let mut state: State;
     let mut last_state: State = State::Normal;
 
-
     loop {
         state = match battery.state() {
             battery::State::Charging => State::Charging,
@@ -192,12 +209,36 @@ fn main() -> battery::Result<()> {
                 let tte = battery.time_to_empty().map(|q| q.value).unwrap_or(0.) as i32 / 60;
                 println!("{:?}, {:?}", soc, tte);
                 let low = match low_threshold {
-                    Threshold::Percentage(p) => if soc <= p { State::Low } else { State::Normal },
-                    Threshold::Minutes(m) => if tte <= m { State::Low } else { State::Normal }
+                    Threshold::Percentage(p) => {
+                        if soc <= p {
+                            State::Low
+                        } else {
+                            State::Normal
+                        }
+                    }
+                    Threshold::Minutes(m) => {
+                        if tte <= m {
+                            State::Low
+                        } else {
+                            State::Normal
+                        }
+                    }
                 };
                 match critical_threshold {
-                    Threshold::Percentage(p) => if soc <= p { State::Critical } else { low },
-                    Threshold::Minutes(m) => if tte <= m { State::Critical } else { low }
+                    Threshold::Percentage(p) => {
+                        if soc <= p {
+                            State::Critical
+                        } else {
+                            low
+                        }
+                    }
+                    Threshold::Minutes(m) => {
+                        if tte <= m {
+                            State::Critical
+                        } else {
+                            low
+                        }
+                    }
                 }
             }
         };
@@ -206,25 +247,34 @@ fn main() -> battery::Result<()> {
             match state {
                 State::Charging => {
                     if let Some(ttf) = battery.time_to_full() {
-                        osd.title = Some(format!("Charging, {} until full", format_duration(ttf.value)));
+                        osd.title = Some(format!(
+                            "Charging, {} until full",
+                            format_duration(ttf.value)
+                        ));
                         osd.urgency = Urgency::Low;
                         osd.update().unwrap();
                     };
                 }
                 State::Low => {
                     if let Some(tte) = battery.time_to_empty() {
-                        osd.title = Some(format!("Low battery, {} remaining", format_duration(tte.value)));
+                        osd.title = Some(format!(
+                            "Low battery, {} remaining",
+                            format_duration(tte.value)
+                        ));
                         osd.urgency = Urgency::Normal;
                         osd.update().unwrap();
                     };
-                },
-                State::Normal | State::Critical => { }
+                }
+                State::Normal | State::Critical => {}
             }
         }
 
         if state == State::Critical {
             if let Some(tte) = battery.time_to_empty() {
-                osd.title = Some(format!("Critically low battery, {} remaining", format_duration(tte.value)));
+                osd.title = Some(format!(
+                    "Critically low battery, {} remaining",
+                    format_duration(tte.value)
+                ));
                 osd.urgency = Urgency::Critical;
                 osd.update().unwrap();
             };
