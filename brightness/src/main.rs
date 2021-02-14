@@ -29,7 +29,7 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
 
     let mut config = Config::new("brightness");
 
-    let refresh_interval = config.get_default("default", "refresh interval", 1);
+    let refresh_interval = config.get_default("default", "refresh interval", 500);
 
     let backend = config.get_default(
         "default",
@@ -64,7 +64,7 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
 
         last_b = b;
 
-        std::thread::sleep(std::time::Duration::from_secs(refresh_interval))
+        std::thread::sleep(std::time::Duration::from_millis(refresh_interval))
     }
 }
 
