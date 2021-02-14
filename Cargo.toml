@@ -3,7 +3,6 @@ members = [
   "common",
 
   "battery",
-  "bluetooth",
   "brightness",
   "mpris",
   "pulseaudio"

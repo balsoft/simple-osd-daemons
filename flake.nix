@@ -28,7 +28,7 @@
           }) {
             defaultCrateOverrides = pkgs.defaultCrateOverrides // {
               simple-osd-battery = oa: { buildInputs = commonDeps; };
-              simple-osd-bluetooth = oa: {
+              simple-osd-common = oa: {
                 buildInputs = commonDeps
                   ++ [ pkgs.dbus_tools.lib pkgs.dbus_tools.dev ];
                 nativeBuildInputs = [ pkgs.pkg-config ];
@@ -69,6 +69,7 @@
       devShell = builtins.mapAttrs (system: pkgs:
         pkgs.mkShell {
           inputsFrom = builtins.attrValues self.packages.${system};
+          buildInputs = [ pkgs.cargo pkgs.rust-analyzer pkgs.clippy ];
         }) nixpkgs.legacyPackages;
     };
 }

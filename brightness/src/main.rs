@@ -3,25 +3,30 @@
 
 extern crate simple_osd_common as osd;
 extern crate sysfs_class;
+#[macro_use]
+extern crate log;
 
 use osd::config::Config;
+use osd::daemon::run;
 use osd::notify::{OSDContents, OSDProgressText, OSD};
 use std::path::PathBuf;
-use log;
 use sysfs_class::{Backlight, Brightness, SysClass};
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Error, Debug)]
 pub enum BrightnessError {
-    #[error("Failed to initialite backlight (possibly invalid backend): {0:?}")]
+    #[error("Failed to initialite backlight (possibly invalid backend): {0}")]
     BacklightInitError(std::io::Error),
-    #[error("Failed to get maximum brightness: {0:?}")]
-    BacklightMaxBrightnessError(std::io::Error),
-    #[error("Failed to get brightness: {0:?}")]
-    BacklightBrightnessError(std::io::Error),
+    #[error("Failed to get maximum brightness: {0}")]
+    MaxBrightnessError(std::io::Error),
+    #[error("Failed to get brightness: {0}")]
+    BrightnessError(std::io::Error),
 }
 
 fn brightness_daemon() -> Result<(), BrightnessError> {
+    let mut osd = OSD::new();
+    osd.title = Some(String::from("Screen brightness"));
+
     let mut config = Config::new("brightness");
 
     let refresh_interval = config.get_default("default", "refresh interval", 1);
@@ -38,10 +43,9 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
     let m = brightness
         .max_brightness()
         .map(|b| b as f32)
-        .map_err(BrightnessError::BacklightMaxBrightnessError)?;
+        .map_err(BrightnessError::MaxBrightnessError)?;
 
-    let mut osd = OSD::new();
-    osd.title = Some(String::from("Screen brightness"));
+    debug!("Maximum brightness: {0}", m);
 
     let mut b: f32;
 
@@ -51,7 +55,7 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
         b = brightness
             .brightness()
             .map(|b| b as f32)
-            .map_err(BrightnessError::BacklightBrightnessError)?;
+            .map_err(BrightnessError::BrightnessError)?;
 
         if (b - last_b).abs() > 0.1 {
             osd.contents = OSDContents::Progress(b / m, OSDProgressText::Percentage);
@@ -65,11 +69,5 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
 }
 
 fn main() {
-    match brightness_daemon() {
-        Ok(_) => { },
-        Err(err) => {
-            error!(err);
-            std::process::exit(1);
-        }
-    }
+    run("simple_osd_brightness", brightness_daemon)
 }

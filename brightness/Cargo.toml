@@ -10,3 +10,4 @@ edition = "2018"
 simple-osd-common = { version = "0.1", path = "../common" }
 sysfs-class = "0.1.2"
 thiserror = "1.0"
+log = "0.4.13"

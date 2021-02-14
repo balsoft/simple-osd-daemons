@@ -9,3 +9,5 @@ edition = "2018"
 [dependencies]
 libpulse-binding = "2.16.2"
 simple-osd-common = { version = "0.1", path = "../common" }
+thiserror = "1.0"
+log = "0.4.13"

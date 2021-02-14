@@ -5,8 +5,38 @@ extern crate configparser;
 extern crate dbus;
 extern crate notify_rust;
 extern crate xdg;
+#[macro_use]
+extern crate log;
+extern crate pretty_env_logger;
+extern crate thiserror;
 
 pub static APPNAME: &str = "simple-osd";
+
+pub mod daemon {
+    use std::fmt::Display;
+    use std::ops::FnOnce;
+    use std::process::exit;
+    macro_rules! good_panic {
+        (target: $target:expr, $($tts:tt)*) => {{
+            error!(target: $target, $($tts)*);
+            exit(1);
+        }}
+    }
+    pub fn run<F, E>(daemon: &str, f: F)
+    where
+        F: FnOnce() -> Result<(), E>,
+        E: Display,
+    {
+        pretty_env_logger::init();
+        info!(target: daemon, "Starting");
+        match f() {
+            Ok(_) => {
+                info!(target: daemon, "Exiting normally")
+            }
+            Err(err) => good_panic!(target: daemon, "{}", err),
+        };
+    }
+}
 
 pub mod config {
     use configparser::ini::Ini;
@@ -24,25 +54,40 @@ pub mod config {
     }
 
     impl Config {
+        fn get_config_path(name: &'static str, config: &mut Ini) -> Option<String> {
+            BaseDirectories::with_prefix(crate::APPNAME)
+                .map_err(|err| warn!("Failed to set up XDG Base Directories: {0:?}", err))
+                .ok()
+                .and_then(|xdg_dirs| {
+                    let config_path_option = xdg_dirs.place_config_file(name).ok();
+
+                    if let Some(config_path_buf) = config_path_option.clone() {
+                        if let Ok(true) = metadata(config_path_buf.clone()).map(|m| m.is_file()) {
+                            let conf = config_path_buf.to_str()?;
+                            debug!("Loading config file from {0}", conf);
+                            if let Err(err) = config.load(conf) {
+                                warn!("Failed to load config from {0}: {1}", conf, err);
+                            }
+                            trace!("Loaded config file:\n{0}", config.writes())
+                        } else {
+                            debug!("Creating a config file at {0:?}", config_path_buf);
+                            if let Err(err) = File::create(config_path_buf.clone()) {
+                                warn!(
+                                    "Failed to create a config file at {0:?}: {1}",
+                                    config_path_buf, err
+                                )
+                            }
+                        };
+                    }
+
+                    config_path_option.map(|p| p.to_str().unwrap().to_string())
+                })
+        }
+
         pub fn new(name: &'static str) -> Config {
             let mut config = Ini::new();
 
-            let xdg_dirs = BaseDirectories::with_prefix(crate::APPNAME).unwrap();
-
-            let config_path_option = xdg_dirs.place_config_file(name).ok();
-
-            if let Some(config_path_buf) = config_path_option.clone() {
-                if metadata(config_path_buf.clone())
-                    .map(|m| m.is_file())
-                    .unwrap_or(false)
-                {
-                    let _ = config.load(config_path_buf.to_str().unwrap());
-                } else {
-                    let _ = File::create(config_path_buf);
-                };
-            }
-
-            let config_path = config_path_option.map(|p| p.to_str().unwrap().to_string());
+            let config_path = Self::get_config_path(name, &mut config);
 
             Config {
                 config,
@@ -57,7 +102,16 @@ pub mod config {
         {
             self.config
                 .get(section, key)
-                .map(|s: String| s.parse().unwrap())
+                .and_then(|s: String| {
+                    s.parse()
+                        .map_err(|err| {
+                            warn!(
+                                "Failed to parse the config variable {0}.{1} ({2}): {3:?}",
+                                section, key, s, err
+                            )
+                        })
+                        .ok()
+                })
                 .or_else(|| {
                     self.config.set(section, key, None);
                     self.config_path
@@ -102,6 +156,7 @@ pub mod notify {
     use notify_rust::{Notification, NotificationHandle};
     use std::default::Default;
     use std::thread;
+    use thiserror::Error;
 
     pub enum OSDProgressText {
         Percentage,
@@ -150,6 +205,30 @@ pub mod notify {
         id: Option<u32>,
     }
 
+    #[derive(Error, Debug)]
+    pub enum NotificationHandleError {
+        #[error("Failed to initialize a DBUS connection")]
+        DBUSConnectionError(#[from] dbus::Error),
+    }
+
+    #[derive(Error, Debug)]
+    pub enum CloseCallbackError {
+        #[error("Failed to get a notification handle")]
+        NotificationHandleError(#[from] NotificationHandleError),
+    }
+
+    #[derive(Error, Debug)]
+    pub enum CloseError {
+        #[error("Failed to get a notification handle")]
+        NotificationHandleError(#[from] NotificationHandleError),
+    }
+
+    #[derive(Error, Debug)]
+    pub enum UpdateError {
+        #[error("Failed to show the notification")]
+        NotificationShowError(#[from] notify_rust::error::Error),
+    }
+
     impl OSD {
         pub fn new() -> OSD {
             let mut config = Config::new("common");
@@ -182,23 +261,26 @@ pub mod notify {
             }
         }
 
-        fn construct_fake_handle(id: u32, notification: Notification) -> NotificationHandle {
+        fn construct_fake_handle(
+            id: u32,
+            notification: Notification,
+        ) -> Result<NotificationHandle, NotificationHandleError> {
             let h = CustomHandle {
                 id,
-                connection: Connection::get_private(BusType::Session).unwrap(),
+                connection: Connection::get_private(BusType::Session)?,
                 notification,
             };
             unsafe {
                 let handle: NotificationHandle = std::mem::transmute(h);
-                handle
+                Ok(handle)
             }
         }
 
-        fn fake_handle(&mut self) -> NotificationHandle {
+        fn fake_handle(&mut self) -> Result<NotificationHandle, NotificationHandleError> {
             Self::construct_fake_handle(self.id.unwrap_or(0), self.notification.clone())
         }
 
-        pub fn update(&mut self) -> Result<(), String> {
+        pub fn update(&mut self) -> Result<(), UpdateError> {
             let text = match &self.contents {
                 OSDContents::Simple(text) => text.clone(),
                 OSDContents::Progress(value, text) => {
@@ -244,12 +326,12 @@ pub mod notify {
                 .urgency(self.urgency)
                 .finalize()
                 .show()
-                .or(Err("Failed to show the notification"))?;
+                .map_err(UpdateError::NotificationShowError)?;
             self.id = Some(handle.id());
             Ok(())
         }
 
-        pub fn on_close<F: 'static>(&mut self, callback: F)
+        pub fn on_close<F: 'static>(&mut self, callback: F) -> Result<(), CloseCallbackError>
         where
             F: std::ops::FnOnce() + Send,
         {
@@ -258,15 +340,26 @@ pub mod notify {
 
                 thread::spawn(move || {
                     let fake_handle = Self::construct_fake_handle(id, notification);
-                    fake_handle.on_close(callback);
+                    trace!("Setting up a close callback on notification {}", id);
+                    fake_handle.map(|handle| {
+                        handle.on_close(|| {
+                            debug!("Notification {} closed, calling back", id);
+                            callback();
+                        });
+                    })
                 });
+
+                Ok(())
             } else {
+                debug!("Notification is already closed, calling immediately");
                 callback();
+                Ok(())
             }
         }
 
-        pub fn close(&mut self) {
-            self.fake_handle().close();
+        pub fn close(&mut self) -> Result<(), CloseError> {
+            self.fake_handle().map(|handle| handle.close())?;
+            Ok(())
         }
     }
 
