@@ -34,7 +34,7 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
     let backend = config.get_default(
         "default",
         "backlight backend",
-        String::from("intel_backlight"),
+        String::from("/var/lib/backlight/intel_backlight"),
     );
 
     let brightness: Backlight = SysClass::from_path(&PathBuf::from(backend))
