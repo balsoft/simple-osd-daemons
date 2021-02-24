@@ -39,7 +39,11 @@ mod format_duration_tests {
         assert_eq!(&format_duration(Duration::from_secs(70)), "01:10");
     }
     #[test]
-    fn many_minutes_seconds() {
+    fn double_digit_minutes_seconds() {
+        assert_eq!(&format_duration(Duration::from_secs(810)), "13:30");
+    }
+    #[test]
+    fn triple_digit_minutes_seconds() {
         assert_eq!(&format_duration(Duration::from_secs(7210)), "120:10");
     }
 }
@@ -302,19 +306,25 @@ fn daemon_mpris() -> Result<(), MprisError> {
                     .artists()
                     .and_then(format_artists)
                     .unwrap_or_else(|| "Unknown".to_string());
-                let position = progress.position();
-                let length = progress
-                    .length()
-                    .unwrap_or_else(|| Duration::from_secs(100000000));
-
                 osd.title = Some(format!("{:?}: {} - {}", playback_status, title, artists));
-                let ratio = position.as_secs_f32() / length.as_secs_f32();
-                let text = format!(
-                    "{} / {}",
-                    format_duration(position),
-                    format_duration(length)
-                );
-                osd.contents = OSDContents::Progress(ratio, OSDProgressText::Text(Some(text)));
+
+                osd.contents = match progress.length() {
+                    Some(length) => {
+                        let position = progress.position();
+
+                        let ratio = position.as_secs_f32() / length.as_secs_f32();
+                        let text = format!(
+                            "{} / {}",
+                            format_duration(position),
+                            format_duration(length)
+                        );
+                        OSDContents::Progress(ratio, OSDProgressText::Text(Some(text)))
+                    },
+                    None => {
+                        trace!("No track length provided");
+                        OSDContents::Simple(None)
+                    },
+                };
                 osd.timeout = 1;
                 osd.icon = match playback_status {
                     PlaybackStatus::Playing => Some("media-playback-start".to_string()),
