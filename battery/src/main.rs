@@ -257,6 +257,7 @@ fn main() -> battery::Result<()> {
                 }
                 State::Low => {
                     if let Some(tte) = battery.time_to_empty() {
+                        osd.icon = Some(String::from("battery-caution"));
                         osd.title = Some(format!(
                             "Low battery, {} remaining",
                             format_duration(tte.value)
@@ -271,6 +272,7 @@ fn main() -> battery::Result<()> {
 
         if state == State::Critical {
             if let Some(tte) = battery.time_to_empty() {
+                osd.icon = Some(String::from("battery-low"));
                 osd.title = Some(format!(
                     "Critically low battery, {} remaining",
                     format_duration(tte.value)

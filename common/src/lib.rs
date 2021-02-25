@@ -153,7 +153,7 @@ pub mod notify {
     use crate::config::Config;
     use dbus::ffidisp::{BusType, Connection};
     pub use notify_rust::Urgency;
-    use notify_rust::{Notification, NotificationHandle};
+    use notify_rust::{Notification, NotificationHandle, Hint};
     use std::default::Default;
     use std::thread;
     use thiserror::Error;
@@ -192,6 +192,8 @@ pub mod notify {
         pub timeout: i32,
 
         // Progress bar stuff
+        hint: bool,
+
         length: i32,
 
         full: String,
@@ -233,7 +235,11 @@ pub mod notify {
         pub fn new() -> OSD {
             let mut config = Config::new("common");
 
-            let timeout = config.get("notification", "default timeout").unwrap_or(-1); // -1 means the default timeout of the notification server
+            // -1 means the default timeout of the notification server
+            let timeout = config.get("notification", "default timeout").unwrap_or(-1);
+
+            // Progress doesn't go down for the same notification, at least in mako, so disable it by default
+            let hint = config.get_default("progressbar", "use freedesktop notification hint", false);
 
             let length = config.get_default("progressbar", "length", 20);
 
@@ -252,6 +258,7 @@ pub mod notify {
                 urgency: Urgency::Normal,
                 id: None,
                 timeout,
+                hint,
                 length,
                 full,
                 empty,
@@ -286,19 +293,24 @@ pub mod notify {
                 OSDContents::Progress(value, text) => {
                     let mut s = String::new();
 
-                    s.push_str(self.start.as_str());
+                    if !self.hint {
 
-                    for _ in 0..(value * self.length as f32) as i32 {
-                        s.push_str(self.full.as_str())
+                        trace!("Hint is false, generating progressbar");
+
+                        s.push_str(self.start.as_str());
+
+                        for _ in 0..(value * self.length as f32) as i32 {
+                            s.push_str(self.full.as_str())
+                        }
+
+                        for _ in (value * self.length as f32) as i32..self.length {
+                            s.push_str(self.empty.as_str())
+                        }
+
+                        s.push_str(self.end.as_str());
+
+                        s.push(' ');
                     }
-
-                    for _ in (value * self.length as f32) as i32..self.length {
-                        s.push_str(self.empty.as_str())
-                    }
-
-                    s.push_str(self.end.as_str());
-
-                    s.push(' ');
 
                     match text {
                         OSDProgressText::Percentage => {
@@ -313,18 +325,25 @@ pub mod notify {
                         }
                     }
 
+
                     Some(s)
                 }
             };
 
             self.id.map(|i| self.notification.id(i));
-            let handle = self
+            let notification = self
                 .notification
                 .summary(self.title.as_deref().unwrap_or(""))
                 .body(&text.unwrap_or_else(String::new))
                 .icon(self.icon.as_deref().unwrap_or(""))
-                .urgency(self.urgency)
-                .finalize()
+                .urgency(self.urgency);
+            if self.hint {
+                if let OSDContents::Progress(value, _) = self.contents {
+                    let percentage = (value * 100.0).round() as i32;
+                    notification.hint(Hint::CustomInt(String::from("value"), percentage));
+                }
+            }
+            let handle = notification.finalize()
                 .show()
                 .map_err(UpdateError::NotificationShowError)?;
             self.id = Some(handle.id());
