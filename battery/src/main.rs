@@ -180,6 +180,8 @@ enum BatteryError {
     NoBatteriesDetected,
     #[error("Failed to update a notification: {0}")]
     OSDUpdate(#[from] osd::notify::UpdateError),
+    #[error("No time-to-empty estimation available")]
+    TTEEstimationUnavailable,
 }
 
 fn battery_daemon() -> Result<(), BatteryError> {
@@ -192,6 +194,8 @@ fn battery_daemon() -> Result<(), BatteryError> {
         .expect("Low threshold is incorrect: must be either a percentage or minutes");
     let critical_threshold = parse_threshold(critical_threshold_str)
         .expect("Critical threshold is incorrect: must be either a percentage or minutes");
+
+    let show_battery_charge = config.get_default("default", "show battery charge", false);
 
     let refresh_interval = config.get_default("default", "refresh interval", 30);
 
@@ -208,86 +212,108 @@ fn battery_daemon() -> Result<(), BatteryError> {
     let mut last_state: State = State::Normal;
 
     loop {
+        let soc = (battery.state_of_charge().value * 100.) as i32;
+
         state = match battery.state() {
             battery::State::Charging => State::Charging,
             battery::State::Full => State::Normal,
             _ => {
-                let soc = (battery.state_of_charge().value * 100.) as i32;
-                let tte = battery.time_to_empty().map(|q| q.value).unwrap_or(0.) as i32 / 60;
+                let tte = battery.time_to_empty().map(|q| q.value as i32 / 60);
                 debug!("{:?}, {:?}", soc, tte);
                 let low = match low_threshold {
-                    Threshold::Percentage(p) => {
-                        if soc <= p {
-                            State::Low
-                        } else {
-                            State::Normal
-                        }
-                    }
-                    Threshold::Minutes(m) => {
-                        if tte <= m {
-                            State::Low
-                        } else {
-                            State::Normal
-                        }
-                    }
+                    Threshold::Percentage(p) if soc <= p => State::Low,
+                    Threshold::Minutes(m) if tte.ok_or(BatteryError::TTEEstimationUnavailable)? <= m => State::Low,
+                    Threshold::Percentage(_) | Threshold::Minutes(_) => State::Normal,
                 };
                 match critical_threshold {
-                    Threshold::Percentage(p) => {
-                        if soc <= p {
-                            State::Critical
-                        } else {
-                            low
-                        }
-                    }
-                    Threshold::Minutes(m) => {
-                        if tte <= m {
-                            State::Critical
-                        } else {
-                            low
-                        }
-                    }
+                    Threshold::Percentage(p) if soc <= p => State::Critical,
+                    Threshold::Minutes(m) if tte.ok_or(BatteryError::TTEEstimationUnavailable)? <= m => State::Critical,
+                    Threshold::Percentage(_) | Threshold::Minutes(_) => low,
                 }
             }
         };
 
+        debug!("State: {:?}, Charge: {:#?}", state, battery.state_of_charge());
+
         if state != last_state {
             match state {
                 State::Charging => {
-                    if let Some(ttf) = battery.time_to_full() {
-                        osd.icon = Some(String::from("battery-good-charging"));
-                        osd.title = Some(format!(
-                            "Charging, {} until full",
-                            format_duration(ttf.value)
-                        ));
-                        osd.urgency = Urgency::Low;
-                        osd.update()?;
+                    osd.icon = if show_battery_charge {
+                        let icon_name = format!("battery-{:03}-charging", (soc / 10) * 10);
+                        Some(config.get_override("icons", icon_name.as_str()))
+                    } else {
+                        Some(config.get_override("icons", "battery-good-charging"))
                     };
+                    osd.urgency = Urgency::Low;
+                    osd.title = Some(
+                        match battery.time_to_full() {
+                            Some(ttf) => format!(
+                                "Charging {}%, {} until full",
+                                soc,
+                                format_duration(ttf.value)
+                            ),
+                            None => {
+                                warn!("No time-to-full estimation available");
+                                format!("Charging {}%", soc)
+                            },
+                        });
+                    osd.update()?;
                 }
                 State::Low => {
-                    if let Some(tte) = battery.time_to_empty() {
-                        osd.icon = Some(String::from("battery-caution"));
-                        osd.title = Some(format!(
-                            "Low battery, {} remaining",
-                            format_duration(tte.value)
-                        ));
-                        osd.urgency = Urgency::Normal;
-                        osd.update()?;
-                    };
+                    osd.icon = Some(config.get_override("icons", "battery-caution"));
+                    osd.urgency = Urgency::Normal;
+                    osd.title = Some(
+                        match battery.time_to_empty() {
+                            Some(tte) => format!(
+                                "Low battery {}%, {} remaining",
+                                soc,
+                                format_duration(tte.value)
+                            ),
+                            None => {
+                                warn!("No time-to-empty estimation available");
+                                format!("Low battery {}%", soc)
+                            },
+                        });
+                    osd.update()?;
                 }
-                State::Normal | State::Critical => {}
+                State::Normal if show_battery_charge => {
+                    let icon_name = format!("battery-{:03}", (soc / 10) * 10);
+                    osd.icon = Some(config.get_override("icons", icon_name.as_str()));
+                    osd.urgency = Urgency::Normal;
+                    osd.title = Some(
+                        match battery.time_to_empty() {
+                            Some(tte) => format!(
+                                "Adapter disconnected, charge {}%, {} remaining",
+                                soc,
+                                format_duration(tte.value)
+                            ),
+                            None => {
+                                warn!("No time-to-empty estimation available");
+                                format!("Adapter disconnected, charge {}%", soc)
+                            },
+                        });
+                    osd.update()?;
+                },
+                _ => {},
             }
         }
 
         if state == State::Critical {
-            if let Some(tte) = battery.time_to_empty() {
-                osd.icon = Some(String::from("battery-low"));
-                osd.title = Some(format!(
-                    "Critically low battery, {} remaining",
-                    format_duration(tte.value)
-                ));
-                osd.urgency = Urgency::Critical;
-                osd.update()?;
-            };
+            osd.icon = Some(config.get_override("icons", "battery-low"));
+            osd.urgency = Urgency::Critical;
+            osd.title = Some(
+                match battery.time_to_empty() {
+                    Some(tte) => format!(
+                        "Critically low battery {}%, {} remaining",
+                        soc,
+                        format_duration(tte.value)
+                    ),
+                    None => {
+                        warn!("No time-to-empty estimation available");
+                        format!("Critically low battery {}%", soc)
+                    },
+                });
+            osd.update()?;
         }
 
         thread::sleep(Duration::from_secs(refresh_interval));

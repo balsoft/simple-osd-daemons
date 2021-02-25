@@ -147,6 +147,11 @@ pub mod config {
         {
             self.get_default(section, key, T::default())
         }
+
+        pub fn get_override(&mut self, section: &str, key_and_value: &str) -> String
+        {
+            self.get_default(section, key_and_value, String::from(key_and_value))
+        }
     }
 }
 pub mod notify {
