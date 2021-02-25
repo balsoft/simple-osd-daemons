@@ -153,7 +153,7 @@ pub mod notify {
     use crate::config::Config;
     use dbus::ffidisp::{BusType, Connection};
     pub use notify_rust::Urgency;
-    use notify_rust::{Notification, NotificationHandle, Hint};
+    use notify_rust::{Hint, Notification, NotificationHandle};
     use std::default::Default;
     use std::thread;
     use thiserror::Error;
@@ -239,7 +239,8 @@ pub mod notify {
             let timeout = config.get("notification", "default timeout").unwrap_or(-1);
 
             // Progress doesn't go down for the same notification, at least in mako, so disable it by default
-            let hint = config.get_default("progressbar", "use freedesktop notification hint", false);
+            let hint =
+                config.get_default("progressbar", "use freedesktop notification hint", false);
 
             let length = config.get_default("progressbar", "length", 20);
 
@@ -294,7 +295,6 @@ pub mod notify {
                     let mut s = String::new();
 
                     if !self.hint {
-
                         trace!("Hint is false, generating progressbar");
 
                         s.push_str(self.start.as_str());
@@ -325,7 +325,6 @@ pub mod notify {
                         }
                     }
 
-
                     Some(s)
                 }
             };
@@ -343,7 +342,8 @@ pub mod notify {
                     notification.hint(Hint::CustomInt(String::from("value"), percentage));
                 }
             }
-            let handle = notification.finalize()
+            let handle = notification
+                .finalize()
                 .show()
                 .map_err(UpdateError::NotificationShowError)?;
             self.id = Some(handle.id());

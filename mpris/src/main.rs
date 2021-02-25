@@ -319,11 +319,11 @@ fn daemon_mpris() -> Result<(), MprisError> {
                             format_duration(length)
                         );
                         OSDContents::Progress(ratio, OSDProgressText::Text(Some(text)))
-                    },
+                    }
                     None => {
                         trace!("No track length provided");
                         OSDContents::Simple(None)
-                    },
+                    }
                 };
                 osd.timeout = 1;
                 osd.icon = match playback_status {

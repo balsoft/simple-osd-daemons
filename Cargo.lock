@@ -691,7 +691,9 @@ name = "simple-osd-battery"
 version = "0.1.0"
 dependencies = [
  "battery",
+ "log",
  "simple-osd-common",
+ "thiserror",
 ]
 
 [[package]]

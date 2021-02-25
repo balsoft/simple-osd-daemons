@@ -3,13 +3,17 @@
 
 extern crate battery;
 extern crate simple_osd_common as osd;
+extern crate thiserror;
+#[macro_use]
+extern crate log;
 
-use std::io;
 use std::thread;
 use std::time::Duration;
 
 use osd::config::Config;
+use osd::daemon::run;
 use osd::notify::{Urgency, OSD};
+use thiserror::Error;
 
 #[derive(Debug, Eq, PartialEq)]
 enum Threshold {
@@ -168,7 +172,17 @@ mod format_duration_tests {
     }
 }
 
-fn main() -> battery::Result<()> {
+#[derive(Error, Debug)]
+enum BatteryError {
+    #[error("Unable to access battery information")]
+    BatteryInformationAccess(#[from] battery::errors::Error),
+    #[error("No batteries detected")]
+    NoBatteriesDetected,
+    #[error("Failed to update a notification: {0}")]
+    OSDUpdate(#[from] osd::notify::UpdateError),
+}
+
+fn battery_daemon() -> Result<(), BatteryError> {
     let mut config = Config::new("battery");
 
     let low_threshold_str = config.get_default("threshold", "low", String::from("30m"));
@@ -185,17 +199,10 @@ fn main() -> battery::Result<()> {
     osd.icon = Some(String::from("battery"));
 
     let manager = battery::Manager::new()?;
-    let mut battery = match manager.batteries()?.next() {
-        Some(Ok(battery)) => battery,
-        Some(Err(e)) => {
-            eprintln!("Unable to access battery information");
-            return Err(e);
-        }
-        None => {
-            eprintln!("Unable to find any batteries");
-            return Err(io::Error::from(io::ErrorKind::NotFound).into());
-        }
-    };
+    let mut battery = manager
+        .batteries()?
+        .next()
+        .ok_or(BatteryError::NoBatteriesDetected)??;
 
     let mut state: State;
     let mut last_state: State = State::Normal;
@@ -207,7 +214,7 @@ fn main() -> battery::Result<()> {
             _ => {
                 let soc = (battery.state_of_charge().value * 100.) as i32;
                 let tte = battery.time_to_empty().map(|q| q.value).unwrap_or(0.) as i32 / 60;
-                println!("{:?}, {:?}", soc, tte);
+                debug!("{:?}, {:?}", soc, tte);
                 let low = match low_threshold {
                     Threshold::Percentage(p) => {
                         if soc <= p {
@@ -247,12 +254,13 @@ fn main() -> battery::Result<()> {
             match state {
                 State::Charging => {
                     if let Some(ttf) = battery.time_to_full() {
+                        osd.icon = Some(String::from("battery-good-charging"));
                         osd.title = Some(format!(
                             "Charging, {} until full",
                             format_duration(ttf.value)
                         ));
                         osd.urgency = Urgency::Low;
-                        osd.update().unwrap();
+                        osd.update()?;
                     };
                 }
                 State::Low => {
@@ -263,7 +271,7 @@ fn main() -> battery::Result<()> {
                             format_duration(tte.value)
                         ));
                         osd.urgency = Urgency::Normal;
-                        osd.update().unwrap();
+                        osd.update()?;
                     };
                 }
                 State::Normal | State::Critical => {}
@@ -278,7 +286,7 @@ fn main() -> battery::Result<()> {
                     format_duration(tte.value)
                 ));
                 osd.urgency = Urgency::Critical;
-                osd.update().unwrap();
+                osd.update()?;
             };
         }
 
@@ -286,4 +294,8 @@ fn main() -> battery::Result<()> {
         manager.refresh(&mut battery)?;
         last_state = state;
     }
+}
+
+fn main() {
+    run("simple-osd-battery", battery_daemon);
 }

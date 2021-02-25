@@ -21,6 +21,8 @@ pub enum BrightnessError {
     MaxBrightnessError(std::io::Error),
     #[error("Failed to get brightness: {0}")]
     BrightnessError(std::io::Error),
+    #[error("Failed to update a notification: {0}")]
+    OSDUpdate(#[from] osd::notify::UpdateError),
 }
 
 fn brightness_daemon() -> Result<(), BrightnessError> {
@@ -58,8 +60,15 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
             .map_err(BrightnessError::BrightnessError)?;
 
         if (b - last_b).abs() > 0.1 {
+            osd.icon = Some(String::from(if b / m < 0.33 {
+                "display-brightness-low"
+            } else if b / m < 0.66 {
+                "display-brightness-medium"
+            } else {
+                "dispolay-brightness-high"
+            }));
             osd.contents = OSDContents::Progress(b / m, OSDProgressText::Percentage);
-            osd.update().unwrap();
+            osd.update()?;
         }
 
         last_b = b;
@@ -69,5 +78,5 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
 }
 
 fn main() {
-    run("simple_osd_brightness", brightness_daemon)
+    run("simple-osd-brightness", brightness_daemon)
 }
