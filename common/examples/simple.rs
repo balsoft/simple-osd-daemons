@@ -1,21 +1,35 @@
 extern crate simple_osd_common as osd;
+extern crate thiserror;
+#[macro_use] extern crate log;
 
+use osd::daemon::run;
 use osd::config::Config;
 use osd::notify::{OSDContents, OSDProgressText, Urgency, OSD};
 use std::thread::sleep;
 use std::time::Duration;
+use thiserror::Error;
 
-fn main() {
+#[derive(Error, Debug)]
+enum SimpleError {
+    #[error("Failed to update a notification: {0}")]
+    OSDUpdate(#[from] osd::notify::UpdateError),
+    #[error("Failed to close a notification: {0}")]
+    OSDClose(#[from] osd::notify::CloseError),
+    #[error("Failed to set a notification close callback: {0}")]
+    OSDOnClose(#[from] osd::notify::CloseCallbackError),
+}
+
+fn simple_daemon() -> Result<(), SimpleError> {
     let mut config = Config::new("simple-example");
 
     let foo = config.get_default("example section", "foo", "bar baz".to_string());
 
-    println!("Value of foo is {}", foo);
+    info!("Value of foo is {}", foo);
 
     let example_no_default =
         config.get::<i32>("example section", "example variable with no default");
 
-    println!(
+    info!(
         "Value of example variable with no default is {:?}",
         example_no_default
     );
@@ -54,10 +68,14 @@ fn main() {
             OSDProgressText::Text(Some(format!("{}s / {}s", elapsed, eta))),
         );
 
-        osd_simple.update();
-        osd_progress_bar_percentage.update();
-        osd_progress_bar_text.update();
+        osd_simple.update()?;
+        osd_progress_bar_percentage.update()?;
+        osd_progress_bar_text.update()?;
 
         sleep(Duration::from_secs(refresh_interval));
     }
+}
+
+fn main() {
+    run("simple-osd-simple", simple_daemon)
 }
