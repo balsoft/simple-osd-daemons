@@ -1,3 +1,6 @@
+// This is free and unencumbered software released into the public domain.
+// balsoft 2020
+
 extern crate simple_osd_common as osd;
 extern crate thiserror;
 #[macro_use] extern crate log;

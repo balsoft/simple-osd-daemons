@@ -1,3 +1,6 @@
+// This is free and unencumbered software released into the public domain.
+// balsoft 2020
+
 pub extern crate mpris;
 pub extern crate simple_osd_common as osd;
 #[macro_use]
