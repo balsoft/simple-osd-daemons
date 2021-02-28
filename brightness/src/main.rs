@@ -65,7 +65,7 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
             } else if b / m < 0.66 {
                 "display-brightness-medium"
             } else {
-                "dispolay-brightness-high"
+                "display-brightness-high"
             }));
             osd.contents = OSDContents::Progress(b / m, OSDProgressText::Percentage);
             osd.update()?;
