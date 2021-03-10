@@ -260,7 +260,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
                     osd.update()?;
                 }
                 State::Low => {
-                    osd.icon = Some(config.get_override("icons", "battery-caution"));
+                    osd.icon = Some(config.get_override("icons", "battery-low"));
                     osd.urgency = Urgency::Normal;
                     osd.title = Some(
                         match battery.time_to_empty() {
@@ -299,7 +299,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
         }
 
         if state == State::Critical {
-            osd.icon = Some(config.get_override("icons", "battery-low"));
+            osd.icon = Some(config.get_override("icons", "battery-caution"));
             osd.urgency = Urgency::Critical;
             osd.title = Some(
                 match battery.time_to_empty() {
