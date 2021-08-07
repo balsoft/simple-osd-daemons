@@ -291,7 +291,7 @@ fn daemon_mpris() -> Result<(), MprisError> {
                 dismissed
                     .lock()
                     .expect(MUTEX_LOCK)
-                    .store(false, Ordering::Relaxed);
+                    .store(false, Ordering::SeqCst);
             }
 
             let elapsed = trigger
@@ -302,7 +302,7 @@ fn daemon_mpris() -> Result<(), MprisError> {
 
             if elapsed.as_secs() < timeout
                 && playback_status != PlaybackStatus::Stopped
-                && !dismissed.lock().expect(MUTEX_LOCK).load(Ordering::Relaxed)
+                && !dismissed.lock().expect(MUTEX_LOCK).load(Ordering::SeqCst)
             {
                 let metadata = progress.metadata();
                 let artists = metadata
