@@ -162,6 +162,7 @@ pub mod notify {
     use std::default::Default;
     use std::thread;
     use thiserror::Error;
+    use std::sync::{Arc, Mutex};
 
     pub enum OSDProgressText {
         Percentage,
@@ -209,7 +210,7 @@ pub mod notify {
 
         // Internal notification
         notification: Notification,
-        id: Option<u32>,
+        id: Arc<Mutex<Option<u32>>>,
     }
 
     #[derive(Error, Debug)]
@@ -262,7 +263,7 @@ pub mod notify {
                 icon: None,
                 contents: OSDContents::default(),
                 urgency: Urgency::Normal,
-                id: None,
+                id: Arc::new(Mutex::new(None)),
                 timeout,
                 hint,
                 length,
@@ -290,7 +291,7 @@ pub mod notify {
         }
 
         fn fake_handle(&mut self) -> Result<NotificationHandle, NotificationHandleError> {
-            Self::construct_fake_handle(self.id.unwrap_or(0), self.notification.clone())
+            Self::construct_fake_handle(self.id.lock().unwrap().unwrap_or(0), self.notification.clone())
         }
 
         pub fn update(&mut self) -> Result<(), UpdateError> {
@@ -334,7 +335,8 @@ pub mod notify {
                 }
             };
 
-            self.id.map(|i| self.notification.id(i));
+            self.notification = Notification::new();
+
             let notification = self
                 .notification
                 .summary(self.title.as_deref().unwrap_or(""))
@@ -347,11 +349,26 @@ pub mod notify {
                     notification.hint(Hint::CustomInt(String::from("value"), percentage));
                 }
             }
-            let handle = notification
+            if let Some(id) = *self.id.lock().unwrap() {
+                trace!("Replaces {}", id);
+                notification.id(id);
+            }
+            let handle : NotificationHandle = notification
                 .finalize()
                 .show()
                 .map_err(UpdateError::NotificationShowError)?;
-            self.id = Some(handle.id());
+            trace!("Handle {:?}", handle);
+            self.id = Arc::new(Mutex::new(Some(handle.id())));
+            let notification = self.notification.clone();
+            let id = self.id.clone();
+            thread::spawn(move || {
+                let fake_handle = Self::construct_fake_handle(id.lock().unwrap().unwrap_or(0), notification).unwrap();
+                fake_handle.on_close(|| {
+                    trace!("Notification has been closed, resetting id to None");
+                    let mut id = id.lock().unwrap();
+                    *id = None;
+                })
+            });
             Ok(())
         }
 
@@ -359,7 +376,7 @@ pub mod notify {
         where
             F: std::ops::FnOnce() + Send,
         {
-            if let Some(id) = self.id {
+            if let Some(id) = *self.id.lock().unwrap() {
                 let notification = self.notification.clone();
 
                 thread::spawn(move || {
