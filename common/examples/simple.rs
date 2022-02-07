@@ -3,10 +3,11 @@
 
 extern crate simple_osd_common as osd;
 extern crate thiserror;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
-use osd::daemon::run;
 use osd::config::Config;
+use osd::daemon::run;
 use osd::notify::{OSDContents, OSDProgressText, Urgency, OSD};
 use std::thread::sleep;
 use std::time::Duration;
