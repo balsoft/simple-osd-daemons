@@ -187,6 +187,7 @@ impl OSD {
             .summary(self.title.as_deref().unwrap_or(""))
             .body(&text.unwrap_or_else(String::new))
             .icon(self.icon.as_deref().unwrap_or(""))
+            .hint(Hint::Category("osd".to_owned()))
             .urgency(self.urgency);
         if self.hint {
             if let OSDContents::Progress(value, _) = self.contents {
