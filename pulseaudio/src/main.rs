@@ -11,6 +11,8 @@ extern crate log;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+use std::collections::HashMap;
+
 use osd::config::Config;
 use osd::daemon::run;
 use osd::notify::{OSDContents, OSDProgressText, OSD};
@@ -81,23 +83,29 @@ fn pulseaudio_daemon() -> Result<(), PulseaudioError> {
     let introspector = context.introspect();
 
     let osd = Rc::new(RefCell::new(OSD::new()));
+    let prev_state = Rc::new(RefCell::new(HashMap::<String, (f32, bool)>::new()));
 
     let sink_info_handler = move |results: ListResult<&SinkInfo>| {
         if let ListResult::Item(i) = results {
             let volume = i.volume.avg().0 as f32 / 65536.;
+
             let sink_name = i.description.as_deref().unwrap_or("Unnamed sink");
-            let muted_message = if i.mute { " [MUTED]" } else { "" };
-            osd.borrow_mut().icon = Some(String::from(match (i.mute, volume) {
-                (true, _) => "audio-volume-muted",
-                (false, v) if v < 0.33 => "audio-volume-low",
-                (false, v) if v < 0.66 => "audio-volume-medium",
-                (false, _) => "audio-volume-high",
-            }));
-            osd.borrow_mut().title = Some(format!("Volume on {}{}", sink_name, muted_message));
-            osd.borrow_mut().contents = OSDContents::Progress(volume, OSDProgressText::Percentage);
-            if let Err(err) = osd.borrow_mut().update() {
-                error!("Failed to update the notification: {0}", err);
-                std::process::exit(1);
+            let show = if let Some((volume_prev, mute_prev)) = prev_state.borrow_mut().insert(sink_name.to_string(), (volume, i.mute)) {
+                volume_prev != volume || mute_prev != i.mute
+            } else { true };
+            if show {
+                let muted_message = if i.mute { " [MUTED]" } else { "" };
+                osd.borrow_mut().icon = Some(String::from(match (i.mute, volume) {
+                    (true, _) => "audio-volume-muted",
+                    (false, v) if v < 0.33 => "audio-volume-low",
+                    (false, v) if v < 0.66 => "audio-volume-medium",
+                    (false, _) => "audio-volume-high",
+                }));
+                osd.borrow_mut().title = Some(format!("Volume on {}{}", sink_name, muted_message));
+                osd.borrow_mut().contents = OSDContents::Progress(volume, OSDProgressText::Percentage);
+                if let Err(err) = osd.borrow_mut().update() {
+                    error!("Failed to update the notification: {0}", err);
+                }
             }
         }
     };
