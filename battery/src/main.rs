@@ -187,8 +187,8 @@ enum BatteryError {
 fn battery_daemon() -> Result<(), BatteryError> {
     let mut config = Config::new("battery");
 
-    let low_threshold_str = config.get_default("threshold", "low", String::from("30m"));
-    let critical_threshold_str = config.get_default("threshold", "critical", String::from("10m"));
+    let low_threshold_str = config.get_default("threshold", "low", String::from("15%"));
+    let critical_threshold_str = config.get_default("threshold", "critical", String::from("5%"));
 
     let low_threshold = parse_threshold(low_threshold_str)
         .expect("Low threshold is incorrect: must be either a percentage or minutes");
@@ -197,7 +197,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
 
     let show_battery_charge = config.get_default("default", "show battery charge", false);
 
-    let refresh_interval = config.get_default("default", "refresh interval", 30);
+    let refresh_interval = config.get_default("default", "refresh interval", 1);
 
     let mut osd = OSD::new();
     osd.icon = Some(String::from("battery"));
@@ -216,7 +216,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
 
         state = match battery.state() {
             battery::State::Charging => State::Charging,
-            battery::State::Full => State::Normal,
+            battery::State::Full => State::Charging,
             _ => {
                 let tte = battery.time_to_empty().map(|q| q.value as i32 / 60);
                 debug!("{:?}, {:?}", soc, tte);
