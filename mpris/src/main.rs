@@ -213,8 +213,6 @@ enum MprisError {
     PlayerFinderNew(mpris::DBusError),
     #[error("Unable to track player progress: {0}")]
     PlayerTrackProgress(mpris::DBusError),
-    #[error("Failed to update a notification: {0}")]
-    OSDUpdate(#[from] osd::notify::UpdateError),
     #[error("Failed to close a notification: {0}")]
     OSDClose(#[from] osd::notify::CloseError),
     #[error("Failed to set a notification close callback: {0}")]
@@ -334,7 +332,7 @@ fn daemon_mpris() -> Result<(), MprisError> {
                     PlaybackStatus::Paused => Some("media-playback-pause".to_string()),
                     _ => None,
                 };
-                osd.update()?;
+                osd.update_();
                 if !waiting_on_close {
                     trace!("Setting up a notification dismissal callback");
                     waiting_on_close = true;

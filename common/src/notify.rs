@@ -219,6 +219,10 @@ impl OSD {
         Ok(())
     }
 
+    pub fn update_(&mut self) {
+        self.update().unwrap_or_else(|err| { warn!("{}", err); });
+    }
+
     pub fn on_close<F: 'static>(&mut self, callback: F) -> Result<(), CloseCallbackError>
     where
         F: std::ops::FnOnce() + Send,

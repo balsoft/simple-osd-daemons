@@ -103,9 +103,7 @@ fn pulseaudio_daemon() -> Result<(), PulseaudioError> {
                 }));
                 osd.borrow_mut().title = Some(format!("Volume on {}{}", sink_name, muted_message));
                 osd.borrow_mut().contents = OSDContents::Progress(volume, OSDProgressText::Percentage);
-                if let Err(err) = osd.borrow_mut().update() {
-                    error!("Failed to update the notification: {0}", err);
-                }
+                osd.borrow_mut().update_();
             }
         }
     };

@@ -247,6 +247,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
             battery.state_of_charge()
         );
 
+
         if state != last_state {
             match state {
                 State::Charging => {
@@ -268,7 +269,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
                             format!("Charging {}%", soc)
                         }
                     });
-                    osd.update()?;
+                    osd.update_();
                 }
                 State::Low => {
                     osd.icon = Some(config.get_override("icons", "battery-low"));
@@ -284,7 +285,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
                             format!("Low battery {}%", soc)
                         }
                     });
-                    osd.update()?;
+                    osd.update_();
                 }
                 State::Normal if show_battery_charge => {
                     let icon_name = format!("battery-{:03}", (soc / 10) * 10);
@@ -301,7 +302,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
                             format!("Adapter disconnected, charge {}%", soc)
                         }
                     });
-                    osd.update()?;
+                    osd.update_();
                 }
                 _ => {}
             }
@@ -321,7 +322,7 @@ fn battery_daemon() -> Result<(), BatteryError> {
                     format!("Critically low battery {}%", soc)
                 }
             });
-            osd.update()?;
+            osd.update_();
         }
 
         thread::sleep(Duration::from_secs(refresh_interval));

@@ -68,7 +68,7 @@ fn brightness_daemon() -> Result<(), BrightnessError> {
                 "display-brightness-high"
             }));
             osd.contents = OSDContents::Progress(b / m, OSDProgressText::Percentage);
-            osd.update()?;
+            osd.update_();
         }
 
         last_b = b;
