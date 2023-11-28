@@ -470,7 +470,7 @@ dependencies = [
 [[package]]
 name = "mpris"
 version = "2.0.0-rc2"
-source = "git+https://github.com/Mange/mpris-rs#c3f47a33d2e816bedaabb6dd1019b884c1681522"
+source = "git+https://github.com/Mange/mpris-rs?rev=95ae5bf5d33a780f57328044a700308fe7d1c5c2#95ae5bf5d33a780f57328044a700308fe7d1c5c2"
 dependencies = [
  "dbus",
  "derive_is_enum_variant",
