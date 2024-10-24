@@ -16,7 +16,7 @@ use std::collections::HashMap;
 use osd::config::Config;
 use osd::daemon::run;
 use osd::notify::{OSDContents, OSDProgressText, OSD};
-use pulse::context::Context;
+use pulse::context::{Context, State};
 use pulse::mainloop::standard::Mainloop;
 
 use pulse::context::subscribe::{subscription_masks, Facility, Operation};
@@ -116,6 +116,14 @@ fn pulseaudio_daemon() -> Result<(), PulseaudioError> {
     };
 
     context.set_subscribe_callback(Some(Box::new(subscribe_callback)));
+
+    // Kill the process if the server dies (ugly, but I don't think there's any other way)
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            if context.get_state() != State::Ready { std::process::exit(1); }
+        }
+    });
 
     mainloop
         .run()

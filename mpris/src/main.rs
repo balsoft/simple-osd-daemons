@@ -112,7 +112,7 @@ mod volume_changes {
     use super::*;
 
     use pulse::context::subscribe::{subscription_masks, Facility, Operation};
-    use pulse::context::Context;
+    use pulse::context::{Context, State};
     use pulse::mainloop::standard::IterateResult;
     use pulse::mainloop::standard::Mainloop;
 
@@ -197,6 +197,7 @@ mod volume_changes {
             VolumeMonitor { mainloop, context }
         }
         pub fn tick(&self) {
+            if self.context.lock().unwrap().get_state() != State::Ready { std::process::exit(1); }
             match self.mainloop.lock().unwrap().iterate(false) {
                 IterateResult::Quit(_) | IterateResult::Err(_) => {
                     panic!("Iterate state was not success, quitting...");
