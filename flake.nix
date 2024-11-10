@@ -3,9 +3,9 @@
 
 {
   inputs = {
-    nixpkgs.url = "github:nixos/nixpkgs";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
     crate2nix = {
-      url = "github:balsoft/crate2nix/tools-nix-version-comparison";
+      url = "github:nix-community/crate2nix";
       flake = false;
     };
   };
@@ -17,7 +17,7 @@
     in {
       packages = forAllSystems (pkgs:
         let
-          commonDeps = with pkgs; [ libnotify gdk_pixbuf glib ];
+          commonDeps = with pkgs; [ libnotify gdk-pixbuf glib ];
 
           inherit (import "${crate2nix}/tools.nix" { inherit pkgs; })
             generatedCargoNix;
@@ -30,7 +30,7 @@
               simple-osd-battery = oa: { buildInputs = commonDeps; };
               simple-osd-common = oa: {
                 buildInputs = commonDeps
-                  ++ [ pkgs.dbus_tools.lib pkgs.dbus_tools.dev ];
+                  ++ [ pkgs.dbus.lib pkgs.dbus.dev ];
                 nativeBuildInputs = [ pkgs.pkg-config ];
               };
               simple-osd-brightness = oa: { buildInputs = commonDeps; };

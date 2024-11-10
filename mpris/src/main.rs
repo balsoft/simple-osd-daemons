@@ -111,7 +111,8 @@ mod volume_changes {
 
     use super::*;
 
-    use pulse::context::subscribe::{subscription_masks, Facility, Operation};
+    use libpulse_binding::context::FlagSet;
+    use pulse::context::subscribe::{InterestMaskSet, Facility, Operation};
     use pulse::context::{Context, State};
     use pulse::mainloop::standard::IterateResult;
     use pulse::mainloop::standard::Mainloop;
@@ -146,7 +147,7 @@ mod volume_changes {
                         .expect(MUTEX_LOCK)
                         .get::<String>("pulseaudio", "server")
                         .as_deref(),
-                    0,
+                    FlagSet::all(),
                     None,
                 )
                 .expect("Failed to connect context");
@@ -175,7 +176,7 @@ mod volume_changes {
             context
                 .lock()
                 .unwrap()
-                .subscribe(subscription_masks::SINK, |success| {
+                .subscribe(InterestMaskSet::SINK, |success| {
                     if !success {
                         eprintln!("failed to subscribe to events");
                         return;
@@ -327,7 +328,7 @@ fn daemon_mpris() -> Result<(), MprisError> {
                         OSDContents::Simple(None)
                     }
                 };
-                osd.timeout = 1;
+                osd.timeout = 1000;
                 osd.icon = match playback_status {
                     PlaybackStatus::Playing => Some("media-playback-start".to_string()),
                     PlaybackStatus::Paused => Some("media-playback-pause".to_string()),
@@ -338,19 +339,15 @@ fn daemon_mpris() -> Result<(), MprisError> {
                     trace!("Setting up a notification dismissal callback");
                     waiting_on_close = true;
                     let dismissed_clone = dismissed.clone();
-                    osd.on_close(move || {
+                    osd.on_close(Box::new(move |_| {
                         trace!("Notification closed, flagging it as dismissed");
                         dismissed_clone
                             .lock()
                             .expect(MUTEX_LOCK)
                             .store(true, Ordering::Relaxed);
-                    })?;
+                    }))?;
                 }
             } else {
-                if waiting_on_close {
-                    trace!("Notification timeout reached, closing");
-                    osd.close()?
-                }
                 waiting_on_close = false;
             }
 

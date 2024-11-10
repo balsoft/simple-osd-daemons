@@ -2,7 +2,6 @@
 // balsoft 2020
 
 extern crate configparser;
-extern crate dbus;
 extern crate notify_rust;
 extern crate xdg;
 #[macro_use]

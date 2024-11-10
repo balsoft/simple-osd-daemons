@@ -16,10 +16,10 @@ use std::collections::HashMap;
 use osd::config::Config;
 use osd::daemon::run;
 use osd::notify::{OSDContents, OSDProgressText, OSD};
-use pulse::context::{Context, State};
+use pulse::context::{Context, FlagSet, State};
 use pulse::mainloop::standard::Mainloop;
 
-use pulse::context::subscribe::{subscription_masks, Facility, Operation};
+use pulse::context::subscribe::{InterestMaskSet, Facility, Operation};
 
 use pulse::callbacks::ListResult;
 use pulse::context::introspect::SinkInfo;
@@ -51,7 +51,7 @@ fn pulseaudio_daemon() -> Result<(), PulseaudioError> {
     context
         .connect(
             config.get::<String>("default", "server").as_deref(),
-            0,
+            FlagSet::empty(),
             None,
         )
         .map_err(PulseaudioError::ContextConnectError)?;
@@ -73,7 +73,7 @@ fn pulseaudio_daemon() -> Result<(), PulseaudioError> {
     }
 
     trace!("Subscribing to SINK events");
-    context.subscribe(subscription_masks::SINK, |success| {
+    context.subscribe(InterestMaskSet::SINK, |success| {
         if !success {
             error!("Failed to subscribe to pulseaudio events");
             std::process::exit(1);

@@ -1,7 +1,6 @@
 use crate::config::Config;
-use dbus::ffidisp::{BusType, Connection};
 pub use notify_rust::Urgency;
-use notify_rust::{Hint, Notification, NotificationHandle};
+use notify_rust::{CloseHandler, CloseReason, Hint, Notification, NotificationHandle};
 use std::default::Default;
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -21,12 +20,6 @@ impl Default for OSDContents {
     fn default() -> OSDContents {
         OSDContents::Simple(None)
     }
-}
-
-struct CustomHandle {
-    pub id: u32,
-    pub connection: Connection,
-    pub notification: Notification,
 }
 
 pub struct OSD {
@@ -54,12 +47,13 @@ pub struct OSD {
     // Internal notification
     notification: Notification,
     id: Arc<Mutex<Option<u32>>>,
+    on_close_handler: Arc<Mutex<Box<dyn CloseHandler<CloseReason> + Send + Sync>>>,
 }
 
 #[derive(Error, Debug)]
 pub enum NotificationHandleError {
-    #[error("Failed to initialize a DBUS connection")]
-    DBUSConnectionError(#[from] dbus::Error),
+    #[error("Failed to initialize a ZBUS connection")]
+    ZBUSConnectionError(#[from] zbus::Error),
 }
 
 #[derive(Error, Debug)]
@@ -114,29 +108,8 @@ impl OSD {
             start,
             end,
             notification,
+            on_close_handler: Arc::new(Mutex::new(Box::new(|_| {}))),
         }
-    }
-
-    fn construct_fake_handle(
-        id: u32,
-        notification: Notification,
-    ) -> Result<NotificationHandle, NotificationHandleError> {
-        let h = CustomHandle {
-            id,
-            connection: Connection::get_private(BusType::Session)?,
-            notification,
-        };
-        unsafe {
-            let handle: NotificationHandle = std::mem::transmute(h);
-            Ok(handle)
-        }
-    }
-
-    fn fake_handle(&mut self) -> Result<NotificationHandle, NotificationHandleError> {
-        Self::construct_fake_handle(
-            self.id.lock().unwrap().unwrap_or(0),
-            self.notification.clone(),
-        )
     }
 
     pub fn update(&mut self) -> Result<(), UpdateError> {
@@ -205,16 +178,17 @@ impl OSD {
             .map_err(UpdateError::NotificationShowError)?;
         trace!("Handle {:?}", handle);
         self.id = Arc::new(Mutex::new(Some(handle.id())));
-        let notification = self.notification.clone();
         let id = self.id.clone();
+        let on_close_handler = self.on_close_handler.clone();
         thread::spawn(move || {
-            let fake_handle =
-                Self::construct_fake_handle(id.lock().unwrap().unwrap_or(0), notification).unwrap();
-            fake_handle.on_close(|| {
+            handle.on_close(|reason| {
                 trace!("Notification has been closed, resetting id to None");
                 let mut id = id.lock().unwrap();
                 *id = None;
-            })
+                let mut on_close_handler = on_close_handler.lock().unwrap();
+                on_close_handler.call(reason);
+                *on_close_handler = Box::new(|_| {});
+            });
         });
         Ok(())
     }
@@ -223,35 +197,17 @@ impl OSD {
         self.update().unwrap_or_else(|err| { warn!("{}", err); });
     }
 
-    pub fn on_close<F: 'static>(&mut self, callback: F) -> Result<(), CloseCallbackError>
-    where
-        F: std::ops::FnOnce() + Send,
+    pub fn on_close(&mut self, callback: Box<dyn CloseHandler<CloseReason> + Send + Sync>) -> Result<(), CloseCallbackError>
     {
         if let Some(id) = *self.id.lock().unwrap() {
-            let notification = self.notification.clone();
-
-            thread::spawn(move || {
-                let fake_handle = Self::construct_fake_handle(id, notification);
-                trace!("Setting up a close callback on notification {}", id);
-                fake_handle.map(|handle| {
-                    handle.on_close(|| {
-                        debug!("Notification {} closed, calling back", id);
-                        callback();
-                    });
-                })
-            });
-
+            trace!("Setting up a close callback on notification {}", id);
+            self.on_close_handler = Arc::new(Mutex::new(callback));
             Ok(())
         } else {
             debug!("Notification is already closed, calling immediately");
-            callback();
+            callback.call(CloseReason::Other(0));
             Ok(())
         }
-    }
-
-    pub fn close(&mut self) -> Result<(), CloseError> {
-        self.fake_handle().map(|handle| handle.close())?;
-        Ok(())
     }
 }
 
