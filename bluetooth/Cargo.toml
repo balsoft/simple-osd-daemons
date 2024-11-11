@@ -1,0 +1,17 @@
+[package]
+name = "simple-osd-bluetooth"
+version = "0.1.0"
+authors = ["Alexander Bantyev <balsoft@balsoft.ru>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+simple-osd-common = { version = "0.1", path = "../common" }
+bluer = { version = "0.17.3", features = ["bluetoothd"] }
+tokio = "1"
+thiserror = "1.0"
+log = "0.4.13"
+async-io = "2.4.0"
+futures-lite = "2.5.0"
+pretty_env_logger = "0.4.0"

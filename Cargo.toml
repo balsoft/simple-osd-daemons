@@ -5,5 +5,6 @@ members = [
   "battery",
   "brightness",
   "mpris",
-  "pulseaudio"
+  "pulseaudio",
+  "bluetooth",
 ]
