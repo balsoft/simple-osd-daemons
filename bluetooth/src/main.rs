@@ -31,11 +31,13 @@ async fn bluetooth_daemon() -> Result<(), BluetoothError> {
         match event_stream.next().await {
             Some(AdapterEvent::DeviceAdded(addr)) => {
                 let device = adapter.device(addr)?;
-                osd.title = Some(String::from("Connected to"));
-                osd.icon = Some(String::from("network-bluetooth-activated"));
-                osd.contents = OSDContents::Simple(device.name().await?);
-                trace!("DeviceAdded {:?}", device.name().await?);
-                osd.update_();
+                if device.is_connected().await? {
+                    osd.title = Some(String::from("Connected to"));
+                    osd.icon = Some(String::from("network-bluetooth-activated"));
+                    osd.contents = OSDContents::Simple(device.name().await?);
+                    trace!("DeviceAdded {:?}", device.name().await?);
+                    osd.update_();
+                }
             },
             Some(AdapterEvent::DeviceRemoved(addr)) => {
                 let device = adapter.device(addr)?;
